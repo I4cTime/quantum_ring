@@ -12,28 +12,37 @@ Experience **superposition** (multi-environment keys), **entanglement** (linked 
 
 Seamlessly integrated with **Cursor**, **Kiro**, **Claude Code**, and the entire **MCP** ecosystem.
 
-## Install
+## 🚀 Installation
+
+q-ring is designed to be installed globally so it's available anywhere in your terminal. Pick your favorite package manager:
 
 ```bash
-npm install -g q-ring
+# npm
+npm install -g @i4ctime/q-ring
+
+# pnpm (recommended)
+pnpm add -g @i4ctime/q-ring
+
+# yarn
+yarn global add @i4ctime/q-ring
 ```
 
-## Quick Start
+## ⚡ Quick Start
 
 ```bash
-# Store a secret
+# 1️⃣ Store a secret (prompts securely if value is omitted)
 qring set OPENAI_API_KEY sk-...
 
-# Retrieve it
+# 2️⃣ Retrieve it anytime
 qring get OPENAI_API_KEY
 
-# List all keys (values are never shown)
+# 3️⃣ List all keys (values are never shown)
 qring list
 
-# Generate a cryptographic secret
+# 4️⃣ Generate a cryptographic secret and save it
 qring generate --format api-key --prefix "sk-" --save MY_KEY
 
-# Check health of all secrets
+# 5️⃣ Run a full health scan
 qring health
 ```
 
@@ -313,6 +322,6 @@ Optional per-project configuration:
 }
 ```
 
-## License
+## 📜 License
 
-MIT
+[Custom License](LICENSE) - Free for personal and internal use. Distribution, sublicensing, or resale requires explicit permission.
