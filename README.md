@@ -4,9 +4,13 @@
 
 # q-ring
 
-Quantum keyring for AI coding tools — Cursor, Kiro, Claude Code, and more.
+**The first quantum-inspired keyring built specifically for AI coding agents.**
 
-Secrets are stored in your OS native keyring (macOS Keychain, GNOME/KDE Keyring, Windows Credential Manager). q-ring layers quantum mechanics concepts on top to create a secret management system that's actually novel: superposition, entanglement, decay, tunneling, teleportation, and an autonomous agent.
+Stop pasting API keys into plain-text `.env` files or struggling with clunky secret managers. **q-ring** securely anchors your credentials to your OS's native vault (macOS Keychain, GNOME Keyring, Windows Credential Manager), then supercharges them with mechanics from quantum physics. 
+
+Experience **superposition** (multi-environment keys), **entanglement** (linked rotations), **tunneling** (in-memory ephemerality), and **teleportation** (encrypted sharing). 
+
+Seamlessly integrated with **Cursor**, **Kiro**, **Claude Code**, and the entire **MCP** ecosystem.
 
 ## Install
 
