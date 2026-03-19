@@ -1,0 +1,39 @@
+{
+  "name": "q-ring",
+  "version": "0.2.0",
+  "description": "Simple, powerful keyring for AI coding tools — Cursor, Kiro, Claude Code, and more",
+  "type": "module",
+  "bin": {
+    "qring": "./dist/index.js"
+  },
+  "main": "./dist/mcp.js",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "keyring",
+    "secrets",
+    "mcp",
+    "cursor",
+    "claude-code",
+    "kiro",
+    "api-keys"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@napi-rs/keyring": "^1.2.0",
+    "commander": "^14.0.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  }
+}
