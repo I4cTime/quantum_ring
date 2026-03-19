@@ -12,6 +12,8 @@ Experience **superposition** (multi-environment keys), **entanglement** (linked 
 
 Seamlessly integrated with **Cursor**, **Kiro**, **Claude Code**, and the entire **MCP** ecosystem.
 
+[![qring-mcp MCP server](https://glama.ai/mcp/servers/I4cTime/quantum_ring/badges/card.svg)](https://glama.ai/mcp/servers/I4cTime/quantum_ring)
+
 ## 🚀 Installation
 
 q-ring is designed to be installed globally so it's available anywhere in your terminal. Pick your favorite package manager:
