@@ -1,16 +1,23 @@
 {
-  "name": "q-ring",
+  "name": "@i4ctime/q-ring",
   "version": "0.2.0",
-  "description": "Simple, powerful keyring for AI coding tools — Cursor, Kiro, Claude Code, and more",
+  "description": "Quantum keyring for AI coding tools — Cursor, Kiro, Claude Code. Secrets, superposition, entanglement, MCP.",
   "type": "module",
   "bin": {
     "qring": "./dist/index.js"
   },
   "main": "./dist/mcp.js",
+  "files": [
+    "dist",
+    "assets",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "keyring",
@@ -21,7 +28,7 @@
     "kiro",
     "api-keys"
   ],
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "engines": {
     "node": ">=18"
   },
