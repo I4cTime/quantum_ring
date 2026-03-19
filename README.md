@@ -222,6 +222,20 @@ q-ring includes a full MCP server with 20 tools for AI agent integration.
 
 Add to `.cursor/mcp.json` or `.kiro/mcp.json`:
 
+**If q-ring is installed globally** (e.g. `pnpm add -g @i4ctime/q-ring`):
+
+```json
+{
+  "mcpServers": {
+    "q-ring": {
+      "command": "qring-mcp"
+    }
+  }
+}
+```
+
+**If using a local clone:**
+
 ```json
 {
   "mcpServers": {
@@ -236,6 +250,20 @@ Add to `.cursor/mcp.json` or `.kiro/mcp.json`:
 ### Claude Code Configuration
 
 Add to `~/.claude/claude_desktop_config.json`:
+
+**Global install:**
+
+```json
+{
+  "mcpServers": {
+    "q-ring": {
+      "command": "qring-mcp"
+    }
+  }
+}
+```
+
+**Local clone:**
 
 ```json
 {

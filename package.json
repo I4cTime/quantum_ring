@@ -4,7 +4,8 @@
   "description": "Quantum keyring for AI coding tools — Cursor, Kiro, Claude Code. Secrets, superposition, entanglement, MCP.",
   "type": "module",
   "bin": {
-    "qring": "./dist/index.js"
+    "qring": "./dist/index.js",
+    "qring-mcp": "./dist/mcp.js"
   },
   "main": "./dist/mcp.js",
   "files": [
