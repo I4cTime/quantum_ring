@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./assets/logo.png" alt="q-ring logo" width="100%" />
+  <img src="https://unpkg.com/@i4ctime/q-ring@latest/assets/logo.png" alt="q-ring logo" width="100%" />
 </div>
 
 # q-ring
