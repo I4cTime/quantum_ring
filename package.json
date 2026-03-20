@@ -35,12 +35,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/I4cTime/quantum-ring.git"
+    "url": "git+https://github.com/I4cTime/quantum_ring.git"
   },
   "bugs": {
-    "url": "https://github.com/I4cTime/quantum-ring/issues"
+    "url": "https://github.com/I4cTime/quantum_ring/issues"
   },
-  "homepage": "https://github.com/I4cTime/quantum-ring#readme",
+  "homepage": "https://i4ctime.github.io/quantum_ring/",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
     "@napi-rs/keyring": "^1.2.0",
