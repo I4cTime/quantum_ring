@@ -1,6 +1,6 @@
 {
   "name": "@i4ctime/q-ring",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "Quantum keyring for AI coding tools — Cursor, Kiro, Claude Code. Secrets, superposition, entanglement, MCP.",
   "type": "module",
   "bin": {
@@ -18,7 +18,7 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "pnpm run build"
   },
   "keywords": [
     "keyring",
@@ -29,7 +29,7 @@
     "kiro",
     "api-keys"
   ],
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "AGPL-3.0-only",
   "engines": {
     "node": ">=18"
   },

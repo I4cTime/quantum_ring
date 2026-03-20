@@ -326,4 +326,4 @@ Optional per-project configuration:
 
 ## 📜 License
 
-[Custom License](LICENSE) - Free for personal and internal use. Distribution, sublicensing, or resale requires explicit permission.
+[AGPL-3.0](LICENSE) - Free to use, modify, and share. Any derivative work or hosted service must release its source code under the same license.
