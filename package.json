@@ -1,6 +1,6 @@
 {
   "name": "@i4ctime/q-ring",
-  "version": "0.2.7",
+  "version": "0.2.6",
   "description": "Quantum keyring for AI coding tools — Cursor, Kiro, Claude Code. Secrets, superposition, entanglement, MCP.",
   "type": "module",
   "bin": {
