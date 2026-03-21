@@ -6,3 +6,6 @@ dist/
 .DS_Store
 *.tsbuildinfo
 .cursor/
+
+# Local-only publishing checklist (not pushed to GitHub)
+docs/publishing-log.md
