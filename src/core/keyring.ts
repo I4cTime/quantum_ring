@@ -37,6 +37,8 @@ export interface KeyringOptions {
   env?: Environment;
   /** Audit source */
   source?: "cli" | "mcp" | "agent" | "api";
+  /** Skip audit logging (for internal polling like the dashboard) */
+  silent?: boolean;
 }
 
 export interface SetSecretOptions extends KeyringOptions {
@@ -304,7 +306,9 @@ export function listSecrets(opts: KeyringOptions = {}): SecretEntry[] {
     }
   }
 
-  logAudit({ action: "list", source });
+  if (!opts.silent) {
+    logAudit({ action: "list", source });
+  }
 
   return results.sort((a, b) => a.key.localeCompare(b.key));
 }

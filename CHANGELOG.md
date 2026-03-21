@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.1] — 2026-03-21
+
+### Fixed
+- **Dashboard re-rendering** — Cards are now created once and updated in-place via differential DOM patching. No more flickering or re-animation on every SSE tick.
+- **Audit log noise** — `qring list` calls from the dashboard no longer generate audit entries (silent mode) and `list` events are filtered from the dashboard feed.
+
+### Changed
+- **Increased dashboard font sizes** — Base font bumped from 14px to 16px; all panel text sizes proportionally increased for readability.
+- **Header icon** — Replaced inline SVG with the project icon from gh-pages (`icon.png`).
+- **README** — Added Quantum Status Dashboard section with CLI usage and flags; added Dashboard to architecture diagram.
+
 ## [0.3.0] — 2026-03-21
 
 ### Added

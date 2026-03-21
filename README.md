@@ -185,6 +185,23 @@ qring agent --auto-rotate
 qring agent --once
 ```
 
+### Quantum Status Dashboard — Live Monitoring
+
+Launch a real-time dashboard in your browser that visualizes every quantum subsystem at a glance: health summary, decay timers, superposition states, entanglement pairs, active tunnels, anomaly alerts, audit log, and environment detection.
+
+The dashboard is a self-contained HTML page served locally. Data streams in via Server-Sent Events and updates every 5 seconds — no dependencies, no cloud, no config.
+
+```bash
+# Open the dashboard (auto-launches your browser)
+qring status
+
+# Specify a custom port
+qring status --port 4200
+
+# Don't auto-open the browser
+qring status --no-open
+```
+
 ## MCP Server
 
 q-ring includes a full MCP server with 20 tools for AI agent integration.
@@ -305,7 +322,8 @@ MCP Server ────┘       │
                        ├── Entanglement (cross-secret linking)
                        ├── Tunnel (ephemeral in-memory)
                        ├── Teleport (encrypted sharing)
-                       └── Agent (autonomous monitor)
+                       ├── Agent (autonomous monitor)
+                       └── Dashboard (live status via SSE)
 ```
 
 ## Project Config (`.q-ring.json`)

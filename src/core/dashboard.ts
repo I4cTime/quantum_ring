@@ -82,7 +82,7 @@ function toSecretSnapshot(entry: {
 }
 
 export function collectSnapshot(): DashboardSnapshot {
-  const entries = listSecrets({ source: "api" });
+  const entries = listSecrets({ source: "api", silent: true });
 
   const secrets = entries.map(toSecretSnapshot);
 
@@ -109,7 +109,7 @@ export function collectSnapshot(): DashboardSnapshot {
     health: { healthy, stale, expired, noDecay, total: secrets.length },
     entanglements: listEntanglements(),
     tunnels: tunnelList(),
-    audit: queryAudit({ limit: 50 }),
+    audit: queryAudit({ limit: 50 }).filter(e => e.action !== "list"),
     anomalies: detectAnomalies(),
     environment: collapseEnvironment(),
   };
