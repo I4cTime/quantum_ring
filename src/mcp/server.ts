@@ -606,6 +606,28 @@ export function createMcpServer(): McpServer {
     },
   );
 
+  // ─── Status Dashboard ───
+
+  let dashboardInstance: { port: number; close: () => void } | null = null;
+
+  server.tool(
+    "status_dashboard",
+    "Launch the quantum status dashboard — a local web page showing live health, decay timers, superposition states, entanglement graph, tunnels, audit log, and anomaly alerts. Returns the URL to open in a browser.",
+    {
+      port: z.number().optional().default(9876).describe("Port to serve on"),
+    },
+    async (params) => {
+      if (dashboardInstance) {
+        return text(`Dashboard already running at http://127.0.0.1:${dashboardInstance.port}`);
+      }
+
+      const { startDashboardServer } = await import("../core/dashboard.js");
+      dashboardInstance = startDashboardServer({ port: params.port });
+
+      return text(`Dashboard started at http://127.0.0.1:${dashboardInstance.port}\nOpen this URL in a browser to see live quantum status.`);
+    },
+  );
+
   // ─── Agent ───
 
   server.tool(

@@ -1,0 +1,111 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in q-ring
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Please fill out the details below.
+
+        **If this is a security vulnerability, do NOT open an issue.** Use our [security reporting process](https://github.com/I4cTime/quantum_ring/security/policy) instead.
+
+  - type: input
+    id: version
+    attributes:
+      label: q-ring version
+      description: "Run `qring --version` to find this."
+      placeholder: "0.2.9"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of q-ring is affected?
+      options:
+        - CLI (qring command)
+        - MCP Server (qring-mcp)
+        - Secret Storage (set/get/delete)
+        - Tunneling (ephemeral secrets)
+        - Teleportation (secret sharing)
+        - Entanglement (linked secrets)
+        - Superposition (multi-environment)
+        - Docker / Container
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear description of the bug.
+      placeholder: "When I run `qring get MY_KEY`, it returns..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps to reproduce the behavior.
+      placeholder: |
+        1. Run `qring set TEST_KEY "hello"`
+        2. Run `qring get TEST_KEY`
+        3. See error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What actually happened. Include error messages or stack traces if available.
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      placeholder: "Ubuntu 24.04 / macOS 15.3 / Windows 11"
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+      description: "Run `node --version` to find this."
+      placeholder: "v24.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: keyring-backend
+    attributes:
+      label: Keyring backend
+      options:
+        - GNOME Keyring / libsecret
+        - macOS Keychain
+        - Windows Credential Manager
+        - Unknown / Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Any other context — logs, screenshots, related issues, etc.
+    validations:
+      required: false

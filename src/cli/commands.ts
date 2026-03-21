@@ -727,6 +727,45 @@ export function createProgram(): Command {
       console.log();
     });
 
+  // ─── Status Dashboard ───
+
+  program
+    .command("status")
+    .description("Launch the quantum status dashboard in your browser")
+    .option("--port <port>", "Port to serve on", "9876")
+    .option("--no-open", "Don't auto-open the browser")
+    .action(async (cmd) => {
+      const { startDashboardServer } = await import("../core/dashboard.js");
+      const { exec } = await import("node:child_process");
+      const { platform } = await import("node:os");
+
+      const port = Number(cmd.port);
+      const { close } = startDashboardServer({ port });
+      const url = `http://127.0.0.1:${port}`;
+
+      console.log(
+        `\n  ${SYMBOLS.zap} ${c.bold("q-ring quantum status dashboard")}\n`,
+      );
+      console.log(`  ${c.cyan(url)}\n`);
+      console.log(c.dim("  Press Ctrl+C to stop\n"));
+
+      if (cmd.open !== false) {
+        const openCmd =
+          platform() === "darwin" ? "open" : platform() === "win32" ? "start" : "xdg-open";
+        exec(`${openCmd} ${url}`);
+      }
+
+      const shutdown = () => {
+        console.log(`\n${c.dim("  dashboard stopped")}`);
+        close();
+        process.exit(0);
+      };
+      process.on("SIGINT", shutdown);
+      process.on("SIGTERM", shutdown);
+
+      await new Promise(() => {});
+    });
+
   // ─── Agent Mode ───
 
   program
