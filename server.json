@@ -1,0 +1,20 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.I4cTime/q-ring",
+  "description": "Quantum-inspired keyring for AI coding agents with superposition, entanglement, and tunneling.",
+  "repository": {
+    "url": "https://github.com/I4cTime/quantum_ring",
+    "source": "github"
+  },
+  "version": "0.2.9",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@i4ctime/q-ring",
+      "version": "0.2.9",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

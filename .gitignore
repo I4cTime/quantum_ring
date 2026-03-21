@@ -3,6 +3,12 @@ dist/
 *.log
 .env
 .env.*
+*token*
+*secret*
+*credential*
+*_key
+*.pem
+*.key
 .DS_Store
 *.tsbuildinfo
 .cursor/
