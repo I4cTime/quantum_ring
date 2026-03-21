@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.2] — 2026-03-21
+
+### Security
+- Resolved 8 CodeQL `js/clear-text-logging` alerts by sanitizing keyring metadata before CLI output.
+
 ## [0.3.1] — 2026-03-21
 
 ### Fixed
