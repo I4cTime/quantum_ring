@@ -42,13 +42,28 @@ function detectGitBranch(cwd?: string): string | null {
   }
 }
 
+export interface ManifestEntry {
+  required?: boolean;
+  description?: string;
+  /** Expected format for auto-rotation (e.g. "api-key", "password", "uuid") */
+  format?: string;
+  /** Expected prefix (e.g. "sk-") */
+  prefix?: string;
+  /** Provider name for liveness validation (e.g. "openai", "stripe", "github") */
+  provider?: string;
+  /** Custom validation URL for generic HTTP provider */
+  validationUrl?: string;
+}
+
 export interface ProjectConfig {
   env?: Environment;
   defaultEnv?: Environment;
   branchMap?: Record<string, Environment>;
+  /** Secrets manifest — declares required/expected secrets for this project */
+  secrets?: Record<string, ManifestEntry>;
 }
 
-function readProjectConfig(projectPath?: string): ProjectConfig | null {
+export function readProjectConfig(projectPath?: string): ProjectConfig | null {
   const configPath = join(projectPath ?? process.cwd(), ".q-ring.json");
   try {
     if (existsSync(configPath)) {
@@ -104,7 +119,7 @@ export function collapseEnvironment(
   const branch = detectGitBranch(ctx.projectPath);
   if (branch) {
     const branchMap = { ...BRANCH_ENV_MAP, ...config?.branchMap };
-    const mapped = branchMap[branch];
+    const mapped = branchMap[branch] ?? matchGlob(branchMap, branch);
     if (mapped) {
       return { env: mapped, source: "git-branch" };
     }
@@ -115,6 +130,24 @@ export function collapseEnvironment(
   }
 
   return null;
+}
+
+/**
+ * Match a branch name against glob-style patterns in the branchMap.
+ * Supports `*` as a wildcard (e.g., `release/*`, `feature/*`).
+ */
+function matchGlob(
+  branchMap: Record<string, Environment>,
+  branch: string,
+): Environment | undefined {
+  for (const [pattern, env] of Object.entries(branchMap)) {
+    if (!pattern.includes("*")) continue;
+    const regex = new RegExp(
+      "^" + pattern.replace(/\*/g, ".*") + "$",
+    );
+    if (regex.test(branch)) return env;
+  }
+  return undefined;
 }
 
 function mapEnvName(raw: string): Environment {

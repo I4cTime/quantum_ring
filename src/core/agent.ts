@@ -15,6 +15,7 @@ import { checkDecay, type QuantumEnvelope } from "./envelope.js";
 import { detectAnomalies, logAudit, queryAudit } from "./observer.js";
 import { generateSecret } from "./noise.js";
 import { findEntangled } from "./entanglement.js";
+import { fireHooks } from "./hooks.js";
 import { c, SYMBOLS, decayIndicator } from "../utils/colors.js";
 
 export interface AgentConfig {
@@ -85,7 +86,9 @@ export function runHealthScan(config: Partial<AgentConfig> = {}): AgentReport {
       );
 
       if (cfg.autoRotate) {
-        const newValue = generateSecret({ format: "api-key" });
+        const fmt = (entry.envelope?.meta.rotationFormat ?? "api-key") as import("./noise.js").NoiseFormat;
+        const prefix = entry.envelope?.meta.rotationPrefix;
+        const newValue = generateSecret({ format: fmt, prefix });
         setSecret(entry.key, newValue, {
           scope: entry.scope,
           projectPath: cfg.projectPaths[0],
@@ -99,6 +102,13 @@ export function runHealthScan(config: Partial<AgentConfig> = {}): AgentReport {
           source: "agent",
           detail: "auto-rotated by agent (expired)",
         });
+        fireHooks({
+          action: "rotate",
+          key: entry.key,
+          scope: entry.scope,
+          timestamp: new Date().toISOString(),
+          source: "agent",
+        }, entry.envelope?.meta.tags).catch(() => {});
       }
     } else if (decay.isStale) {
       report.stale++;

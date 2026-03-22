@@ -8,12 +8,13 @@ import {
   listSecrets,
   getEnvelope,
   entangleSecrets,
+  disentangleSecrets,
   exportSecrets,
   type KeyringOptions,
 } from "../core/keyring.js";
 import { runHealthScan } from "../core/agent.js";
 import { checkDecay, collapseValue } from "../core/envelope.js";
-import { collapseEnvironment } from "../core/collapse.js";
+import { collapseEnvironment, readProjectConfig } from "../core/collapse.js";
 import type { Scope } from "../core/scope.js";
 import { queryAudit, detectAnomalies } from "../core/observer.js";
 import {
@@ -28,6 +29,15 @@ import {
   tunnelList,
 } from "../core/tunnel.js";
 import { teleportPack, teleportUnpack } from "../core/teleport.js";
+import { importDotenv, parseDotenv } from "../core/import.js";
+import { validateSecret, registry as providerRegistry } from "../core/validate.js";
+import {
+  registerHook,
+  removeHook,
+  listHooks as listAllHooks,
+  type HookType,
+  type HookAction,
+} from "../core/hooks.js";
 
 function text(t: string, isError = false) {
   return {
@@ -88,13 +98,38 @@ export function createMcpServer(): McpServer {
 
   server.tool(
     "list_secrets",
-    "List all secret keys with quantum metadata (scope, decay status, superposition states, entanglement, access count). Values are never exposed.",
+    "List all secret keys with quantum metadata (scope, decay status, superposition states, entanglement, access count). Values are never exposed. Supports filtering by tag, expiry state, and key pattern.",
     {
       scope: scopeSchema,
       projectPath: projectPathSchema,
+      tag: z.string().optional().describe("Filter by tag"),
+      expired: z.boolean().optional().describe("Show only expired secrets"),
+      stale: z.boolean().optional().describe("Show only stale secrets (75%+ decay)"),
+      filter: z.string().optional().describe("Glob pattern on key name (e.g., 'API_*')"),
     },
     async (params) => {
-      const entries = listSecrets(opts(params));
+      let entries = listSecrets(opts(params));
+
+      if (params.tag) {
+        entries = entries.filter((e) =>
+          e.envelope?.meta.tags?.includes(params.tag!),
+        );
+      }
+      if (params.expired) {
+        entries = entries.filter((e) => e.decay?.isExpired);
+      }
+      if (params.stale) {
+        entries = entries.filter(
+          (e) => e.decay?.isStale && !e.decay?.isExpired,
+        );
+      }
+      if (params.filter) {
+        const regex = new RegExp(
+          "^" + params.filter.replace(/\*/g, ".*") + "$",
+          "i",
+        );
+        entries = entries.filter((e) => regex.test(e.key));
+      }
       if (entries.length === 0) return text("No secrets found");
 
       const lines = entries.map((e) => {
@@ -146,6 +181,14 @@ export function createMcpServer(): McpServer {
         .array(z.string())
         .optional()
         .describe("Tags for organization"),
+      rotationFormat: z
+        .enum(["hex", "base64", "alphanumeric", "uuid", "api-key", "token", "password"])
+        .optional()
+        .describe("Format for auto-rotation when this secret expires"),
+      rotationPrefix: z
+        .string()
+        .optional()
+        .describe("Prefix for auto-rotation (e.g. 'sk-')"),
     },
     async (params) => {
       const o = opts(params);
@@ -166,6 +209,8 @@ export function createMcpServer(): McpServer {
           ttlSeconds: params.ttlSeconds,
           description: params.description,
           tags: params.tags,
+          rotationFormat: params.rotationFormat,
+          rotationPrefix: params.rotationPrefix,
         });
 
         return text(`[${params.scope ?? "global"}] ${params.key} set for env:${params.env}`);
@@ -176,6 +221,8 @@ export function createMcpServer(): McpServer {
         ttlSeconds: params.ttlSeconds,
         description: params.description,
         tags: params.tags,
+        rotationFormat: params.rotationFormat,
+        rotationPrefix: params.rotationPrefix,
       });
 
       return text(`[${params.scope ?? "global"}] ${params.key} saved`);
@@ -209,6 +256,196 @@ export function createMcpServer(): McpServer {
     },
     async (params) => {
       return text(hasSecret(params.key, opts(params)) ? "true" : "false");
+    },
+  );
+
+  server.tool(
+    "export_secrets",
+    "Export secrets as .env or JSON format. Collapses superposition. Supports filtering by specific keys or tags.",
+    {
+      format: z
+        .enum(["env", "json"])
+        .optional()
+        .default("env")
+        .describe("Output format"),
+      keys: z
+        .array(z.string())
+        .optional()
+        .describe("Only export these specific key names"),
+      tags: z
+        .array(z.string())
+        .optional()
+        .describe("Only export secrets with any of these tags"),
+      scope: scopeSchema,
+      projectPath: projectPathSchema,
+      env: envSchema,
+    },
+    async (params) => {
+      const output = exportSecrets({
+        ...opts(params),
+        format: params.format as "env" | "json",
+        keys: params.keys,
+        tags: params.tags,
+      });
+
+      if (!output.trim()) return text("No secrets matched the filters", true);
+      return text(output);
+    },
+  );
+
+  server.tool(
+    "import_dotenv",
+    "Import secrets from .env file content. Parses standard dotenv syntax (comments, quotes, multiline escapes) and stores each key/value pair in q-ring.",
+    {
+      content: z.string().describe("The .env file content to parse and import"),
+      scope: scopeSchema.default("global"),
+      projectPath: projectPathSchema,
+      skipExisting: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("Skip keys that already exist in q-ring"),
+      dryRun: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("Preview what would be imported without saving"),
+    },
+    async (params) => {
+      const result = importDotenv(params.content, {
+        scope: params.scope as "global" | "project",
+        projectPath: params.projectPath ?? process.cwd(),
+        source: "mcp",
+        skipExisting: params.skipExisting,
+        dryRun: params.dryRun,
+      });
+
+      const lines = [
+        params.dryRun ? "Dry run — no changes made" : `Imported ${result.imported.length} secret(s)`,
+      ];
+
+      if (result.imported.length > 0) {
+        lines.push(`Keys: ${result.imported.join(", ")}`);
+      }
+      if (result.skipped.length > 0) {
+        lines.push(`Skipped (existing): ${result.skipped.join(", ")}`);
+      }
+
+      return text(lines.join("\n"));
+    },
+  );
+
+  server.tool(
+    "check_project",
+    "Validate project secrets against the .q-ring.json manifest. Returns which required secrets are present, missing, expired, or stale. Use this to verify project readiness.",
+    {
+      projectPath: projectPathSchema,
+    },
+    async (params) => {
+      const projectPath = params.projectPath ?? process.cwd();
+      const config = readProjectConfig(projectPath);
+
+      if (!config?.secrets || Object.keys(config.secrets).length === 0) {
+        return text("No secrets manifest found in .q-ring.json", true);
+      }
+
+      const results: Record<string, unknown>[] = [];
+      let presentCount = 0;
+      let missingCount = 0;
+      let expiredCount = 0;
+      let staleCount = 0;
+
+      for (const [key, manifest] of Object.entries(config.secrets)) {
+        const result = getEnvelope(key, { projectPath, source: "mcp" });
+
+        if (!result) {
+          const status = manifest.required !== false ? "missing" : "optional_missing";
+          if (manifest.required !== false) missingCount++;
+          results.push({ key, status, required: manifest.required !== false, description: manifest.description });
+          continue;
+        }
+
+        const decay = checkDecay(result.envelope);
+
+        if (decay.isExpired) {
+          expiredCount++;
+          results.push({ key, status: "expired", timeRemaining: decay.timeRemaining, description: manifest.description });
+        } else if (decay.isStale) {
+          staleCount++;
+          results.push({ key, status: "stale", lifetimePercent: decay.lifetimePercent, timeRemaining: decay.timeRemaining, description: manifest.description });
+        } else {
+          presentCount++;
+          results.push({ key, status: "ok", description: manifest.description });
+        }
+      }
+
+      const summary = {
+        total: Object.keys(config.secrets).length,
+        present: presentCount,
+        missing: missingCount,
+        expired: expiredCount,
+        stale: staleCount,
+        ready: missingCount === 0 && expiredCount === 0,
+        secrets: results,
+      };
+
+      return text(JSON.stringify(summary, null, 2));
+    },
+  );
+
+  server.tool(
+    "env_generate",
+    "Generate .env file content from the project manifest (.q-ring.json). Resolves each declared secret from q-ring, collapses superposition, and returns .env formatted output. Warns about missing or expired secrets.",
+    {
+      projectPath: projectPathSchema,
+      env: envSchema,
+    },
+    async (params) => {
+      const projectPath = params.projectPath ?? process.cwd();
+      const config = readProjectConfig(projectPath);
+
+      if (!config?.secrets || Object.keys(config.secrets).length === 0) {
+        return text("No secrets manifest found in .q-ring.json", true);
+      }
+
+      const lines: string[] = [];
+      const warnings: string[] = [];
+
+      for (const [key, manifest] of Object.entries(config.secrets)) {
+        const value = getSecret(key, {
+          projectPath,
+          env: params.env,
+          source: "mcp",
+        });
+
+        if (value === null) {
+          if (manifest.required !== false) {
+            warnings.push(`MISSING (required): ${key}`);
+          }
+          lines.push(`# ${key}=`);
+          continue;
+        }
+
+        const result = getEnvelope(key, { projectPath, source: "mcp" });
+        if (result) {
+          const decay = checkDecay(result.envelope);
+          if (decay.isExpired) warnings.push(`EXPIRED: ${key}`);
+          else if (decay.isStale) warnings.push(`STALE: ${key}`);
+        }
+
+        const escaped = value
+          .replace(/\\/g, "\\\\")
+          .replace(/"/g, '\\"')
+          .replace(/\n/g, "\\n");
+        lines.push(`${key}="${escaped}"`);
+      }
+
+      const output = lines.join("\n");
+      const result = warnings.length > 0
+        ? `${output}\n\n# Warnings:\n${warnings.map((w) => `# ${w}`).join("\n")}`
+        : output;
+
+      return text(result);
     },
   );
 
@@ -350,6 +587,37 @@ export function createMcpServer(): McpServer {
       );
 
       return text(`Entangled: ${params.sourceKey} <-> ${params.targetKey}`);
+    },
+  );
+
+  server.tool(
+    "disentangle_secrets",
+    "Remove a quantum entanglement between two secrets. They will no longer synchronize on rotation.",
+    {
+      sourceKey: z.string().describe("Source secret key"),
+      targetKey: z.string().describe("Target secret key"),
+      sourceScope: scopeSchema.default("global"),
+      targetScope: scopeSchema.default("global"),
+      sourceProjectPath: z.string().optional(),
+      targetProjectPath: z.string().optional(),
+    },
+    async (params) => {
+      disentangleSecrets(
+        params.sourceKey,
+        {
+          scope: params.sourceScope as Scope,
+          projectPath: params.sourceProjectPath ?? process.cwd(),
+          source: "mcp",
+        },
+        params.targetKey,
+        {
+          scope: params.targetScope as Scope,
+          projectPath: params.targetProjectPath ?? process.cwd(),
+          source: "mcp",
+        },
+      );
+
+      return text(`Disentangled: ${params.sourceKey} </> ${params.targetKey}`);
     },
   );
 
@@ -603,6 +871,112 @@ export function createMcpServer(): McpServer {
       }
 
       return text(summary.join("\n"));
+    },
+  );
+
+  // ─── Validation Tools ───
+
+  server.tool(
+    "validate_secret",
+    "Test if a secret is actually valid with its target service (e.g., OpenAI, Stripe, GitHub). Uses provider auto-detection based on key prefixes, or accepts an explicit provider name. Never logs the secret value.",
+    {
+      key: z.string().describe("The secret key name"),
+      provider: z.string().optional().describe("Force a specific provider (openai, stripe, github, aws, http)"),
+      scope: scopeSchema,
+      projectPath: projectPathSchema,
+    },
+    async (params) => {
+      const value = getSecret(params.key, opts(params));
+      if (value === null) return text(`Secret "${params.key}" not found`, true);
+
+      const envelope = getEnvelope(params.key, opts(params));
+      const provHint = params.provider ?? envelope?.envelope.meta.provider;
+
+      const result = await validateSecret(value, { provider: provHint });
+      return text(JSON.stringify(result, null, 2));
+    },
+  );
+
+  server.tool(
+    "list_providers",
+    "List all available validation providers for secret liveness testing.",
+    {},
+    async () => {
+      const providers = providerRegistry.listProviders().map((p) => ({
+        name: p.name,
+        description: p.description,
+        prefixes: p.prefixes ?? [],
+      }));
+      return text(JSON.stringify(providers, null, 2));
+    },
+  );
+
+  // ─── Hook Tools ───
+
+  server.tool(
+    "register_hook",
+    "Register a webhook/callback that fires when a secret is updated, deleted, or rotated. Supports shell commands, HTTP webhooks, and process signals.",
+    {
+      type: z.enum(["shell", "http", "signal"]).describe("Hook type"),
+      key: z.string().optional().describe("Trigger on exact key match"),
+      keyPattern: z.string().optional().describe("Trigger on key glob pattern (e.g. DB_*)"),
+      tag: z.string().optional().describe("Trigger on secrets with this tag"),
+      scope: z.enum(["global", "project"]).optional().describe("Trigger only for this scope"),
+      actions: z.array(z.enum(["write", "delete", "rotate"])).optional().default(["write", "delete", "rotate"]).describe("Which actions trigger this hook"),
+      command: z.string().optional().describe("Shell command to execute (for shell type)"),
+      url: z.string().optional().describe("URL to POST to (for http type)"),
+      signalTarget: z.string().optional().describe("Process name or PID (for signal type)"),
+      signalName: z.string().optional().default("SIGHUP").describe("Signal to send (for signal type)"),
+      description: z.string().optional().describe("Human-readable description"),
+    },
+    async (params) => {
+      if (!params.key && !params.keyPattern && !params.tag) {
+        return text("At least one match criterion required: key, keyPattern, or tag", true);
+      }
+
+      const entry = registerHook({
+        type: params.type as HookType,
+        match: {
+          key: params.key,
+          keyPattern: params.keyPattern,
+          tag: params.tag,
+          scope: params.scope as "global" | "project" | undefined,
+          action: params.actions as HookAction[],
+        },
+        command: params.command,
+        url: params.url,
+        signal: params.signalTarget ? { target: params.signalTarget, signal: params.signalName } : undefined,
+        description: params.description,
+        enabled: true,
+      });
+
+      return text(JSON.stringify(entry, null, 2));
+    },
+  );
+
+  server.tool(
+    "list_hooks",
+    "List all registered secret change hooks with their match criteria, type, and status.",
+    {},
+    async () => {
+      const hooks = listAllHooks();
+      if (hooks.length === 0) return text("No hooks registered");
+      return text(JSON.stringify(hooks, null, 2));
+    },
+  );
+
+  server.tool(
+    "remove_hook",
+    "Remove a registered hook by ID.",
+    {
+      id: z.string().describe("Hook ID to remove"),
+    },
+    async (params) => {
+      const removed = removeHook(params.id);
+      return text(
+        removed ? `Removed hook ${params.id}` : `Hook "${params.id}" not found`,
+        !removed,
+      );
     },
   );
 

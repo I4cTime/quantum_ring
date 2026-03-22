@@ -20,7 +20,8 @@ import {
 } from "./envelope.js";
 import { collapseEnvironment, type CollapseContext } from "./collapse.js";
 import { logAudit, type AuditAction } from "./observer.js";
-import { findEntangled, entangle as entangleLink } from "./entanglement.js";
+import { findEntangled, entangle as entangleLink, disentangle as disentangleLink } from "./entanglement.js";
+import { fireHooks } from "./hooks.js";
 
 export interface SecretEntry {
   key: string;
@@ -54,6 +55,12 @@ export interface SetSecretOptions extends KeyringOptions {
   description?: string;
   /** Tags */
   tags?: string[];
+  /** Format for auto-rotation (e.g. "api-key", "password", "uuid") */
+  rotationFormat?: string;
+  /** Prefix for auto-rotation (e.g. "sk-") */
+  rotationPrefix?: string;
+  /** Provider for liveness validation (e.g. "openai", "stripe") */
+  provider?: string;
 }
 
 function readEnvelope(service: string, key: string): QuantumEnvelope | null {
@@ -160,6 +167,10 @@ export function setSecret(
 
   let envelope: QuantumEnvelope;
 
+  const rotFmt = opts.rotationFormat ?? existing?.meta.rotationFormat;
+  const rotPfx = opts.rotationPrefix ?? existing?.meta.rotationPrefix;
+  const prov = opts.provider ?? existing?.meta.provider;
+
   if (opts.states) {
     envelope = createEnvelope("", {
       states: opts.states,
@@ -169,6 +180,9 @@ export function setSecret(
       ttlSeconds: opts.ttlSeconds,
       expiresAt: opts.expiresAt,
       entangled: existing?.meta.entangled,
+      rotationFormat: rotFmt,
+      rotationPrefix: rotPfx,
+      provider: prov,
     });
   } else {
     envelope = createEnvelope(value, {
@@ -177,6 +191,9 @@ export function setSecret(
       ttlSeconds: opts.ttlSeconds,
       expiresAt: opts.expiresAt,
       entangled: existing?.meta.entangled,
+      rotationFormat: rotFmt,
+      rotationPrefix: rotPfx,
+      provider: prov,
     });
   }
 
@@ -214,6 +231,14 @@ export function setSecret(
       // entangled target may not exist
     }
   }
+
+  fireHooks({
+    action: "write",
+    key,
+    scope,
+    timestamp: new Date().toISOString(),
+    source,
+  }, envelope.meta.tags).catch(() => {});
 }
 
 /**
@@ -233,6 +258,13 @@ export function deleteSecret(
       if (entry.deleteCredential()) {
         deleted = true;
         logAudit({ action: "delete", key, scope, source });
+        fireHooks({
+          action: "delete",
+          key,
+          scope,
+          timestamp: new Date().toISOString(),
+          source,
+        }).catch(() => {});
       }
     } catch {
       // not found
@@ -318,12 +350,23 @@ export function listSecrets(opts: KeyringOptions = {}): SecretEntry[] {
  * Collapses superposition based on detected environment.
  */
 export function exportSecrets(
-  opts: KeyringOptions & { format?: "env" | "json" } = {},
+  opts: KeyringOptions & { format?: "env" | "json"; keys?: string[]; tags?: string[] } = {},
 ): string {
   const format = opts.format ?? "env";
   const env = resolveEnv(opts);
-  const entries = listSecrets(opts);
+  let entries = listSecrets(opts);
   const source = opts.source ?? "cli";
+
+  if (opts.keys?.length) {
+    const keySet = new Set(opts.keys);
+    entries = entries.filter((e) => keySet.has(e.key));
+  }
+
+  if (opts.tags?.length) {
+    entries = entries.filter((e) =>
+      opts.tags!.some((t) => e.envelope?.meta.tags?.includes(t)),
+    );
+  }
 
   const merged = new Map<string, string>();
 
@@ -384,5 +427,29 @@ export function entangleSecrets(
     key: sourceKey,
     source: sourceOpts.source ?? "cli",
     detail: `entangled with ${targetKey}`,
+  });
+}
+
+/**
+ * Remove an entanglement between two secrets.
+ */
+export function disentangleSecrets(
+  sourceKey: string,
+  sourceOpts: KeyringOptions,
+  targetKey: string,
+  targetOpts: KeyringOptions,
+): void {
+  const sourceScopes = resolveScope({ ...sourceOpts, scope: sourceOpts.scope ?? "global" });
+  const targetScopes = resolveScope({ ...targetOpts, scope: targetOpts.scope ?? "global" });
+
+  const source = { service: sourceScopes[0].service, key: sourceKey };
+  const target = { service: targetScopes[0].service, key: targetKey };
+
+  disentangleLink(source, target);
+  logAudit({
+    action: "entangle",
+    key: sourceKey,
+    source: sourceOpts.source ?? "cli",
+    detail: `disentangled from ${targetKey}`,
   });
 }

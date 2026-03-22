@@ -34,6 +34,12 @@ export interface SecretMetadata {
   lastAccessedAt?: string;
   /** Whether this secret is ephemeral (tunneling - not persisted to keyring) */
   ephemeral?: boolean;
+  /** Format to use when auto-rotating (e.g. "api-key", "password", "uuid") */
+  rotationFormat?: string;
+  /** Prefix to use when auto-rotating api-key/token formats */
+  rotationPrefix?: string;
+  /** Provider name for liveness validation (e.g. "openai", "stripe", "github") */
+  provider?: string;
 }
 
 export interface QuantumEnvelope {
@@ -57,6 +63,9 @@ export function createEnvelope(
     ttlSeconds?: number;
     expiresAt?: string;
     entangled?: EntanglementLink[];
+    rotationFormat?: string;
+    rotationPrefix?: string;
+    provider?: string;
   },
 ): QuantumEnvelope {
   const now = new Date().toISOString();
@@ -80,6 +89,9 @@ export function createEnvelope(
       tags: opts?.tags,
       entangled: opts?.entangled,
       accessCount: 0,
+      rotationFormat: opts?.rotationFormat,
+      rotationPrefix: opts?.rotationPrefix,
+      provider: opts?.provider,
     },
   };
 }

@@ -138,6 +138,9 @@ qring entangle API_KEY API_KEY_BACKUP
 
 # Now updating API_KEY also updates API_KEY_BACKUP
 qring set API_KEY "new-value"
+
+# Unlink entangled secrets
+qring disentangle API_KEY API_KEY_BACKUP
 ```
 
 ### Tunneling — Ephemeral Secrets
@@ -168,6 +171,158 @@ cat bundle.txt | qring teleport unpack
 
 # Preview without importing
 qring teleport unpack <bundle> --dry-run
+```
+
+### Import — Bulk Secret Ingestion
+
+Import secrets from `.env` files directly into q-ring. Supports standard dotenv syntax including comments, quoted values, and escape sequences.
+
+```bash
+# Import all secrets from a .env file
+qring import .env
+
+# Import to project scope, skipping existing keys
+qring import .env --project --skip-existing
+
+# Preview what would be imported
+qring import .env --dry-run
+```
+
+### Selective Export
+
+Export only the secrets you need using key names or tag filters.
+
+```bash
+# Export specific keys
+qring export --keys "API_KEY,DB_PASS,REDIS_URL"
+
+# Export by tag
+qring export --tags "backend"
+
+# Combine with format
+qring export --keys "API_KEY,DB_PASS" --format json
+```
+
+### Secret Search and Filtering
+
+Filter `qring list` output by tag, expiry state, or key pattern.
+
+```bash
+# Filter by tag
+qring list --tag backend
+
+# Show only expired secrets
+qring list --expired
+
+# Show only stale secrets (75%+ decay)
+qring list --stale
+
+# Glob pattern on key name
+qring list --filter "API_*"
+```
+
+### Project Secret Manifest
+
+Declare required secrets in `.q-ring.json` and validate project readiness with a single command.
+
+```bash
+# Validate project secrets against the manifest
+qring check
+
+# See which secrets are present, missing, expired, or stale
+qring check --project-path /path/to/project
+```
+
+### Env File Sync
+
+Generate a `.env` file from the project manifest, resolving each key from q-ring with environment-aware superposition collapse.
+
+```bash
+# Generate to stdout
+qring env:generate
+
+# Write to a file
+qring env:generate --output .env
+
+# Force a specific environment
+qring env:generate --env staging --output .env.staging
+```
+
+### Secret Liveness Validation
+
+Test if a secret is actually valid with its target service. q-ring auto-detects the provider from key prefixes (`sk-` → OpenAI, `ghp_` → GitHub, etc.) or accepts an explicit provider name.
+
+```bash
+# Validate a single secret
+qring validate OPENAI_API_KEY
+
+# Force a specific provider
+qring validate SOME_KEY --provider stripe
+
+# Validate all secrets with detectable providers
+qring validate --all
+
+# Only validate manifest-declared secrets
+qring validate --all --manifest
+
+# List available providers
+qring validate --list-providers
+```
+
+**Built-in providers:** OpenAI, Stripe, GitHub, AWS (format check), Generic HTTP.
+
+Output:
+
+```
+  ✓ OPENAI_API_KEY   valid    (openai, 342ms)
+  ✗ STRIPE_KEY       invalid  (stripe, 128ms) — API key has been revoked
+  ⚠ AWS_ACCESS_KEY   error    (aws, 10002ms) — network timeout
+  ○ DATABASE_URL     unknown  — no provider detected
+```
+
+### Hooks — Callbacks on Secret Change
+
+Register webhooks, shell commands, or process signals that fire when secrets are created, updated, or deleted. Supports key matching, glob patterns, tag filtering, and scope constraints.
+
+```bash
+# Run a shell command when a secret changes
+qring hook add --key DB_PASS --exec "docker restart app"
+
+# POST to a webhook on any write/delete
+qring hook add --key API_KEY --url "https://hooks.example.com/rotate"
+
+# Trigger on all secrets tagged "backend"
+qring hook add --tag backend --exec "pm2 restart all"
+
+# Signal a process when DB secrets change
+qring hook add --key-pattern "DB_*" --signal-target "node"
+
+# List all hooks
+qring hook list
+
+# Remove a hook
+qring hook remove <id>
+
+# Enable/disable
+qring hook enable <id>
+qring hook disable <id>
+
+# Dry-run test a hook
+qring hook test <id>
+```
+
+Hooks are fire-and-forget: a failing hook never blocks secret operations. The hook registry is stored at `~/.config/q-ring/hooks.json`.
+
+### Configurable Rotation
+
+Set a rotation format per secret so the agent auto-rotates with the correct value shape.
+
+```bash
+# Store a secret with rotation format metadata
+qring set STRIPE_KEY "sk-..." --rotation-format api-key --rotation-prefix "sk-"
+
+# Store a password with password rotation format
+qring set DB_PASS "..." --rotation-format password
 ```
 
 ### Agent Mode — Autonomous Monitoring
@@ -204,17 +359,21 @@ qring status --no-open
 
 ## MCP Server
 
-q-ring includes a full MCP server with 20 tools for AI agent integration.
+q-ring includes a full MCP server with 31 tools for AI agent integration.
 
 ### Core Tools
 
 | Tool | Description |
 |------|-------------|
 | `get_secret` | Retrieve with superposition collapse + observer logging |
-| `list_secrets` | List keys with quantum metadata (never exposes values) |
-| `set_secret` | Store with optional TTL, env state, tags |
+| `list_secrets` | List keys with quantum metadata, filterable by tag/expiry/pattern |
+| `set_secret` | Store with optional TTL, env state, tags, rotation format |
 | `delete_secret` | Remove a secret |
 | `has_secret` | Boolean check (respects decay) |
+| `export_secrets` | Export as .env/JSON with optional key and tag filters |
+| `import_dotenv` | Parse and import secrets from .env content |
+| `check_project` | Validate project secrets against `.q-ring.json` manifest |
+| `env_generate` | Generate .env content from the project manifest |
 
 ### Quantum Tools
 
@@ -224,6 +383,7 @@ q-ring includes a full MCP server with 20 tools for AI agent integration.
 | `detect_environment` | Wavefunction collapse — detect current env context |
 | `generate_secret` | Quantum noise — generate and optionally save secrets |
 | `entangle_secrets` | Link two secrets for synchronized rotation |
+| `disentangle_secrets` | Remove entanglement between two secrets |
 
 ### Tunneling Tools
 
@@ -240,6 +400,21 @@ q-ring includes a full MCP server with 20 tools for AI agent integration.
 |------|-------------|
 | `teleport_pack` | Encrypt secrets into a portable bundle |
 | `teleport_unpack` | Decrypt and import a bundle |
+
+### Validation Tools
+
+| Tool | Description |
+|------|-------------|
+| `validate_secret` | Test if a secret is valid with its target service (OpenAI, Stripe, GitHub, etc.) |
+| `list_providers` | List all available validation providers |
+
+### Hook Tools
+
+| Tool | Description |
+|------|-------------|
+| `register_hook` | Register a shell/HTTP/signal callback on secret changes |
+| `list_hooks` | List all registered hooks with match criteria and status |
+| `remove_hook` | Remove a registered hook by ID |
 
 ### Observer & Health Tools
 
@@ -316,13 +491,16 @@ qring CLI ─────┐
 MCP Server ────┘       │
                        ├── Envelope (quantum metadata)
                        ├── Scope Resolver (global / project)
-                       ├── Collapse (env detection)
+                       ├── Collapse (env detection + branchMap globs)
                        ├── Observer (audit log)
                        ├── Noise (secret generation)
                        ├── Entanglement (cross-secret linking)
+                       ├── Validate (provider-based liveness checks)
+                       ├── Hooks (shell/HTTP/signal callbacks)
+                       ├── Import (.env file ingestion)
                        ├── Tunnel (ephemeral in-memory)
                        ├── Teleport (encrypted sharing)
-                       ├── Agent (autonomous monitor)
+                       ├── Agent (autonomous monitor + rotation)
                        └── Dashboard (live status via SSE)
 ```
 
@@ -337,10 +515,22 @@ Optional per-project configuration:
   "branchMap": {
     "main": "prod",
     "develop": "dev",
-    "staging": "staging"
+    "staging": "staging",
+    "release/*": "staging",
+    "feature/*": "dev"
+  },
+  "secrets": {
+    "OPENAI_API_KEY": { "required": true, "description": "OpenAI API key", "format": "api-key", "prefix": "sk-", "provider": "openai" },
+    "DATABASE_URL": { "required": true, "description": "Postgres connection string", "validationUrl": "https://api.example.com/health" },
+    "SENTRY_DSN": { "required": false, "description": "Sentry error tracking" }
   }
 }
 ```
+
+- **`branchMap`** supports glob patterns with `*` wildcards (e.g., `release/*` matches `release/v1.0`)
+- **`secrets`** declares the project's required secrets — use `qring check` to validate, `qring env:generate` to produce a `.env` file
+- **`provider`** associates a liveness validation provider with a secret (e.g., `"openai"`, `"stripe"`, `"github"`) — use `qring validate` to test
+- **`validationUrl`** configures the generic HTTP provider's endpoint for custom validation
 
 ## 📜 License
 
