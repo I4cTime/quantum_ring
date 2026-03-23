@@ -11,9 +11,7 @@ interface StatItem {
 
 const stats: StatItem[] = [
   { value: 44, label: "MCP Tools" },
-  { value: 13, label: "Quantum Features" },
-  { value: 6, label: "Tiers" },
-  { value: 5, label: "Platforms" },
+  { value: 24, label: "Quantum Features" },
 ];
 
 function AnimatedNumber({ value, suffix }: { value: number; suffix?: string }) {
@@ -44,7 +42,7 @@ export default function Stats() {
     <section className="py-16 relative z-1">
       <div className="max-w-[1200px] mx-auto px-6">
         <motion.div
-          className="grid grid-cols-2 md:grid-cols-4 gap-4"
+          className="grid grid-cols-2 gap-4 max-w-[600px] mx-auto"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.3 }}

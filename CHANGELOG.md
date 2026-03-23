@@ -5,11 +5,30 @@ All notable changes to this project will be documented in this file.
 ## [0.9.0] — 2026-03-22
 
 ### Added
+- **Composite / Templated Secrets** — store connection strings with `{{OTHER_KEY}}` placeholders that resolve dynamically on read. MCP tool: `get_secret` (template resolution is automatic).
+- **User Approvals (Zero-Trust Agent)** — mark secrets with `--requires-approval` so MCP reads require HMAC-verified, scoped, time-limited approval tokens. CLI: `qring approve`, `qring approvals`. MCP: approval enforcement on `get_secret`.
+- **JIT Provisioning** — dynamically generate short-lived tokens on read (AWS STS, Generic HTTP). CLI: `qring set --jit-provider aws-sts`. MCP: automatic JIT resolution on `get_secret`.
+- **Secure Execution & Auto-Redaction** — `qring exec` injects secrets into command environments with automatic stdout/stderr redaction of known values. Exec profiles restrict allowed commands.
+- **Exec Profiles** — `unrestricted`, `restricted` (blocks curl/wget/ssh, 30s timeout), and `ci` (5min timeout) profiles for `qring exec --profile`. MCP tool: `exec_with_secrets`.
+- **Codebase Secret Scanner** — `qring scan` detects hardcoded credentials using regex heuristics and Shannon entropy analysis. MCP tool: `scan_codebase_for_secrets`.
+- **Secret-Aware Linter** — `qring lint` scans specific files for hardcoded secrets with optional `--fix` to auto-replace with `process.env.KEY` references. MCP tool: `lint_files`.
+- **Agent Memory** — encrypted, persistent key-value store for AI agent sessions. CLI: `qring remember`, `qring recall`, `qring forget`. MCP tools: `agent_remember`, `agent_recall`, `agent_forget`.
+- **Project Context** — safe, redacted overview of project secrets, configuration, and state for agent system prompts. CLI: `qring context`. MCP tool: `get_project_context`.
+- **Pre-Commit Secret Scanning** — `qring hook:install` adds a git pre-commit hook that blocks commits containing hardcoded secrets.
+- **Secret Analytics** — `qring analyze` reports most accessed, unused, stale secrets and gives rotation recommendations. MCP tool: `analyze_secrets`.
+- **Service Setup Wizard** — `qring wizard` scaffolds a new service integration with secrets, manifest entries, and hooks in one command.
+- **Governance Policy** — `.q-ring.json` `policy` section for MCP tool gating, key access restrictions, exec allowlists, and secret lifecycle rules. CLI: `qring policy`. MCP tools: `check_policy`, `get_policy_summary`.
+- **Team & Org Scopes** — `--team` and `--org` flags extend resolution beyond `global` and `project`. Cascade order: project → team → org → global.
+- **Issuer-Native Rotation** — `qring rotate` attempts provider-native rotation (OpenAI, Stripe, etc.) or falls back to local generation. MCP tool: `rotate_secret`.
+- **CI Secret Validation** — `qring ci:validate` batch-validates all secrets against providers in CI-friendly mode with structured pass/fail output. MCP tool: `ci_validate_secrets`.
+- **Tamper-Evident Audit Verify & Export** — `qring audit:verify` checks SHA-256 hash chain integrity; `qring audit:export` outputs jsonl/json/csv. MCP tools: `verify_audit_chain`, `export_audit`.
 - **Shared HTTP client** (`http-request`) for validation and hooks with timeouts and response size limits.
 - **HTTP hook SSRF mitigation** — resolves hook URLs and blocks private/loopback targets by default; override with `Q_RING_ALLOW_PRIVATE_HOOKS=1` if needed. Denied attempts emit `policy_deny` audit events.
 - **Next.js GitHub Pages site** (`web/`) — Tailwind CSS v4, Motion animations, Getting Started (`/docs`) and Changelog (`/changelog`) pages, mobile nav, copyable terminals, animated stats, interactive architecture diagram. Deploy via `deploy-pages.yml` and CI via `nextjs.yml`.
 
 ### Changed
+- MCP server tool count increased from 31 to 44.
+- Architecture expanded with Exec, Scan, Provision, Approval, Context, Linter, Memory, and Policy subsystems.
 - **Dashboard** — pathname routing fixes, SSE backpressure, tighter CORS, inline/system fonts and assets for offline use.
 - **README** — notes on SSRF protection for HTTP hooks.
 
