@@ -1,0 +1,124 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-bg-deep: #04080f;
+  --color-bg-section: #080e18;
+  --color-bg-alt: #0b1221;
+  --color-bg-card: #0f1a2e;
+  --color-bg-card-hover: #142240;
+  --color-border: #1a2d4a;
+  --color-border-glow: #0ea5e9;
+
+  --color-text-primary: #f8f8ff;
+  --color-text-secondary: #c8cfe0;
+  --color-text-dim: #8899b4;
+
+  --color-accent: #0ea5e9;
+  --color-accent-bright: #38bdf8;
+  --color-accent-dim: rgba(14, 165, 233, 0.15);
+  --color-accent-glow: rgba(14, 165, 233, 0.4);
+
+  --color-danger: #ff5e5b;
+  --color-warning: #fbbf24;
+  --color-green: #22c55e;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+
+  --animate-pulse-glow: pulse 6s ease-in-out infinite;
+  --animate-float: float 5s ease-in-out infinite;
+  --animate-bob-down: bobDown 2s ease-in-out infinite;
+  --animate-arrow-pulse: arrowPulse 2s ease-in-out infinite;
+  --animate-dash-pulse: dashPulse 2s ease-in-out infinite;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    background: var(--color-bg-deep);
+    color: var(--color-text-primary);
+    font-family: var(--font-display);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  a {
+    color: var(--color-accent);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  a:hover {
+    color: var(--color-accent-bright);
+  }
+}
+
+/* ============ KEYFRAMES ============ */
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+  50%      { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-12px); }
+}
+
+@keyframes bobDown {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(6px); }
+}
+
+@keyframes arrowPulse {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
+}
+
+@keyframes dashPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ============ WEBGL BACKGROUND ============ */
+#webgl-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+#webgl-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 8, 15, 0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  z-index: 1;
+}
+
+#webgl-bg canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  position: relative;
+  z-index: 0;
+}
+
+/* ============ REDUCED MOTION ============ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  #webgl-bg {
+    display: none;
+  }
+}
