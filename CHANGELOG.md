@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.1] — 2026-03-22
+
+### Added
+- **Shared HTTP client** (`http-request`) for validation and hooks with timeouts and response size limits.
+- **HTTP hook SSRF mitigation** — resolves hook URLs and blocks private/loopback targets by default; override with `Q_RING_ALLOW_PRIVATE_HOOKS=1` if needed. Denied attempts emit `policy_deny` audit events.
+- **Next.js GitHub Pages site** (`web/`) — Tailwind CSS v4, Motion animations, Getting Started (`/docs`) and Changelog (`/changelog`) pages, mobile nav, copyable terminals, animated stats, interactive architecture diagram. Deploy via `deploy-pages.yml` and CI via `nextjs.yml`.
+
+### Changed
+- **Dashboard** — pathname routing fixes, SSE backpressure, tighter CORS, inline/system fonts and assets for offline use.
+- **README** — notes on SSRF protection for HTTP hooks.
+
 ## [0.4.0] — 2026-03-22
 
 ### Added

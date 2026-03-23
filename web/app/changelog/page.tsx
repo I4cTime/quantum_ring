@@ -17,6 +17,15 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.4.1",
+    date: "2026-03-22",
+    highlights: [
+      { type: "added", text: "Shared HTTP client for validation/hooks; SSRF mitigation for HTTP hooks (private IP block; Q_RING_ALLOW_PRIVATE_HOOKS override)" },
+      { type: "added", text: "Next.js site refresh — Tailwind v4, Motion, /docs, /changelog, mobile nav, copyable terminals, stats, interactive architecture" },
+      { type: "changed", text: "Dashboard routing, SSE backpressure, CORS, offline-safe HTML" },
+    ],
+  },
+  {
     version: "0.4.0",
     date: "2026-03-22",
     highlights: [
