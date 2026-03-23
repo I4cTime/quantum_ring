@@ -138,15 +138,26 @@ export function startDashboardServer(
       }
       try {
         const ok = res.write(data);
-        if (!ok) clients.delete(res);
+        if (!ok) {
+          clients.delete(res);
+          try { res.end(); } catch { try { res.destroy(); } catch { /* noop */ } }
+        }
       } catch {
         clients.delete(res);
+        try { res.end(); } catch { try { res.destroy(); } catch { /* noop */ } }
       }
     }
   }
 
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
-    const { pathname } = new URL(req.url ?? "/", "http://127.0.0.1");
+    let pathname: string;
+    try {
+      ({ pathname } = new URL(req.url ?? "/", "http://127.0.0.1"));
+    } catch {
+      res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Bad Request: invalid URL");
+      return;
+    }
 
     if (pathname === "/events") {
       res.writeHead(200, {

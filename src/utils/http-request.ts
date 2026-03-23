@@ -38,6 +38,10 @@ export function httpRequest_(
 
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      reject(new Error(`Unsupported URL protocol: ${parsed.protocol}`));
+      return;
+    }
     const reqFn = parsed.protocol === "https:" ? httpsRequest : httpRequest;
 
     const reqHeaders: Record<string, string | number> = { ...headers };
@@ -63,8 +67,18 @@ export function httpRequest_(
           chunks.push(chunk);
         });
 
+        let settled = false;
+        const settle = (result: HttpResponse) => {
+          if (!settled) { settled = true; resolve(result); }
+        };
+        const fail = (err: Error) => {
+          if (!settled) { settled = true; reject(err); }
+        };
+
+        res.on("error", (err) => fail(new Error(`Response error: ${err.message}`)));
+
         res.on("end", () => {
-          resolve({
+          settle({
             statusCode: res.statusCode ?? 0,
             body: Buffer.concat(chunks).toString("utf8"),
             truncated,
@@ -72,13 +86,11 @@ export function httpRequest_(
         });
 
         res.on("close", () => {
-          if (truncated) {
-            resolve({
-              statusCode: res.statusCode ?? 0,
-              body: Buffer.concat(chunks).toString("utf8"),
-              truncated: true,
-            });
-          }
+          settle({
+            statusCode: res.statusCode ?? 0,
+            body: Buffer.concat(chunks).toString("utf8"),
+            truncated,
+          });
         });
       },
     );
