@@ -1,4 +1,10 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { type ReactNode } from "react";
+import { motion } from "motion/react";
+import FadeIn from "@/components/motion/FadeIn";
+import StaggerGroup, { itemVariants } from "@/components/motion/StaggerGroup";
+import CopyableTerminal from "@/components/CopyableTerminal";
 
 interface McpGroup {
   title: string;
@@ -111,20 +117,30 @@ const groups: McpGroup[] = [
 
 export default function McpSection() {
   return (
-    <section className="section" id="mcp">
-      <div className="container">
-        <h2 className="section-title reveal">MCP Integration</h2>
-        <p className="section-subtitle reveal">
-          31 tools for seamless AI agent integration. Works with Cursor, Kiro,
-          and Claude Code.
-        </p>
+    <section className="py-24 relative z-1" id="mcp">
+      <div className="max-w-[1200px] mx-auto px-6 relative z-1">
+        <FadeIn>
+          <h2 className="text-center text-[clamp(2rem,5vw,3rem)] font-bold mb-2 bg-gradient-to-br from-text-primary to-accent-bright bg-clip-text text-transparent">
+            MCP Integration
+          </h2>
+        </FadeIn>
+        <FadeIn delay={0.1}>
+          <p className="text-center text-text-secondary text-lg max-w-[600px] mx-auto mb-12">
+            31 tools for seamless AI agent integration. Works with Cursor, Kiro,
+            and Claude Code.
+          </p>
+        </FadeIn>
 
-        <div className="mcp-grid">
+        <StaggerGroup className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-5 mb-12">
           {groups.map((g) => (
-            <div key={g.title} className="mcp-group reveal">
-              <h4>
+            <motion.div
+              key={g.title}
+              variants={itemVariants}
+              className="bg-bg-card border border-border rounded-md p-6 flex flex-col h-full"
+            >
+              <h4 className="text-accent text-sm font-semibold uppercase tracking-wide mb-4 pb-2 border-b border-border flex items-center gap-2">
                 <svg
-                  className="mcp-header-icon"
+                  className="w-[18px] h-[18px] shrink-0 drop-shadow-[0_0_6px_rgba(0,209,255,0.4)]"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="url(#neon-grad)"
@@ -136,24 +152,35 @@ export default function McpSection() {
                 </svg>
                 {g.title}
               </h4>
-              <ul className="mcp-list">
+              <ul className="flex flex-col gap-2 flex-1">
                 {g.tools.map((t) => (
-                  <li key={t.name}>
-                    <span className="mcp-tool">{t.name}</span> {t.desc}
+                  <li
+                    key={t.name}
+                    className="text-text-secondary text-sm leading-snug grid grid-cols-[145px_1fr] items-start gap-3"
+                  >
+                    <span className="font-[family-name:var(--font-mono)] text-xs text-accent-bright bg-accent-dim px-2 py-0.5 rounded whitespace-nowrap overflow-hidden text-ellipsis">
+                      {t.name}
+                    </span>{" "}
+                    {t.desc}
                   </li>
                 ))}
               </ul>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </StaggerGroup>
 
-        <h3 className="config-title reveal">Configuration</h3>
-        <div className="config-grid">
-          <ConfigBlock title="Cursor / Kiro" file=".cursor/mcp.json" />
-          <ConfigBlock
-            title="Claude Code"
-            file="claude_desktop_config.json"
-          />
+        <FadeIn>
+          <h3 className="text-center text-[1.4rem] font-semibold mb-6 text-text-primary">
+            Configuration
+          </h3>
+        </FadeIn>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-5">
+          <FadeIn delay={0.1}>
+            <ConfigBlock title="Cursor / Kiro" file=".cursor/mcp.json" />
+          </FadeIn>
+          <FadeIn delay={0.2}>
+            <ConfigBlock title="Claude Code" file="claude_desktop_config.json" />
+          </FadeIn>
         </div>
       </div>
     </section>
@@ -162,27 +189,21 @@ export default function McpSection() {
 
 function ConfigBlock({ title, file }: { title: string; file: string }) {
   return (
-    <div className="config-block reveal">
-      <h5>{title}</h5>
-      <div className="terminal terminal-sm">
-        <div className="terminal-bar">
-          <span className="terminal-dot red" />
-          <span className="terminal-dot yellow" />
-          <span className="terminal-dot green" />
-          <span className="terminal-title">{file}</span>
-        </div>
-        <div className="terminal-body">
-          <pre>
-            {`{
+    <div>
+      <h5 className="text-text-secondary text-sm font-medium mb-3 uppercase tracking-widest">
+        {title}
+      </h5>
+      <CopyableTerminal title={file} maxWidth="100%">
+        <pre>
+          {`{
   "mcpServers": {
     "q-ring": {
       "command": "qring-mcp"
     }
   }
 }`}
-          </pre>
-        </div>
-      </div>
+        </pre>
+      </CopyableTerminal>
     </div>
   );
 }

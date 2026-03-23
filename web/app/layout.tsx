@@ -46,6 +46,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${outfit.variable} ${jetbrainsMono.variable}`}>
       <body>
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[200] focus:bg-accent focus:text-bg-deep focus:px-4 focus:py-2 focus:rounded-md focus:font-semibold focus:outline-none"
+        >
+          Skip to content
+        </a>
         <SvgGradientDefs />
         {children}
       </body>

@@ -1,3 +1,9 @@
+"use client";
+
+import { motion } from "motion/react";
+import FadeIn from "@/components/motion/FadeIn";
+import StaggerGroup, { itemVariants } from "@/components/motion/StaggerGroup";
+
 const features = [
   {
     icon: (
@@ -150,18 +156,29 @@ const features = [
 
 export default function Features() {
   return (
-    <section className="section" id="features">
-      <div className="container">
-        <h2 className="section-title reveal">Quantum Features</h2>
-        <p className="section-subtitle reveal">
-          Thirteen mechanics inspired by quantum physics, engineered for
-          real-world secret management.
-        </p>
-        <div className="features-grid">
-          {features.map((f, i) => (
-            <div key={f.title} className="feature-card reveal" data-delay={i}>
+    <section className="py-24 relative z-1" id="features">
+      <div className="max-w-[1200px] mx-auto px-6 relative z-1">
+        <FadeIn>
+          <h2 className="text-center text-[clamp(2rem,5vw,3rem)] font-bold mb-2 bg-gradient-to-br from-text-primary to-accent-bright bg-clip-text text-transparent">
+            Quantum Features
+          </h2>
+        </FadeIn>
+        <FadeIn delay={0.1}>
+          <p className="text-center text-text-secondary text-lg max-w-[600px] mx-auto mb-12">
+            Thirteen mechanics inspired by quantum physics, engineered for
+            real-world secret management.
+          </p>
+        </FadeIn>
+        <StaggerGroup className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-5">
+          {features.map((f) => (
+            <motion.div
+              key={f.title}
+              variants={itemVariants}
+              whileHover={{ scale: 1.03, transition: { type: "spring", stiffness: 400, damping: 25 } }}
+              className="bg-bg-card border border-border rounded-md p-7 transition-[border-color,box-shadow] duration-300 hover:border-border-glow hover:shadow-[0_8px_32px_rgba(14,165,233,0.1)]"
+            >
               <svg
-                className="feature-icon-svg"
+                className="w-8 h-8 mb-3 drop-shadow-[0_0_6px_rgba(0,209,255,0.5)]"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="url(#neon-grad)"
@@ -171,12 +188,18 @@ export default function Features() {
               >
                 {f.icon}
               </svg>
-              <h3>{f.title}</h3>
-              <p>{f.desc}</p>
-              <code className="feature-cmd">{f.cmd}</code>
-            </div>
+              <h3 className="text-[1.15rem] font-semibold mb-2 text-text-primary">
+                {f.title}
+              </h3>
+              <p className="text-text-secondary text-sm leading-relaxed mb-4">
+                {f.desc}
+              </p>
+              <code className="block font-[family-name:var(--font-mono)] text-xs text-accent bg-[rgba(14,165,233,0.08)] px-3 py-2 rounded-sm break-all">
+                {f.cmd}
+              </code>
+            </motion.div>
           ))}
-        </div>
+        </StaggerGroup>
       </div>
     </section>
   );

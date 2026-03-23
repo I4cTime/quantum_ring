@@ -1,54 +1,57 @@
+import FadeIn from "@/components/motion/FadeIn";
+import CopyableTerminal from "@/components/CopyableTerminal";
+
 export default function QuickStart() {
   return (
-    <section className="section section-alt" id="quickstart">
-      <div className="container">
-        <h2 className="section-title reveal">Quick Start</h2>
-        <p className="section-subtitle reveal">
-          Five commands. Your secrets are quantum-secured.
-        </p>
-        <div className="terminal reveal">
-          <div className="terminal-bar">
-            <span className="terminal-dot red" />
-            <span className="terminal-dot yellow" />
-            <span className="terminal-dot green" />
-            <span className="terminal-title">~ / terminal</span>
-          </div>
-          <div className="terminal-body">
+    <section className="py-24 relative z-1 bg-bg-alt" id="quickstart">
+      <div className="max-w-[1200px] mx-auto px-6 relative z-1">
+        <FadeIn>
+          <h2 className="text-center text-[clamp(2rem,5vw,3rem)] font-bold mb-2 bg-gradient-to-br from-text-primary to-accent-bright bg-clip-text text-transparent">
+            Quick Start
+          </h2>
+        </FadeIn>
+        <FadeIn delay={0.1}>
+          <p className="text-center text-text-secondary text-lg max-w-[600px] mx-auto mb-12">
+            Five commands. Your secrets are quantum-secured.
+          </p>
+        </FadeIn>
+        <FadeIn delay={0.2}>
+          <CopyableTerminal title="~ / terminal">
             <pre>
-              <span className="t-comment">
+              <span className="text-[#555]">
                 # Store a secret (prompts securely if value is omitted)
               </span>
               {"\n"}
-              <span className="t-prompt">$</span>{" "}
-              <span className="t-cmd">qring set</span> OPENAI_API_KEY sk-...
+              <span className="text-green font-bold">$</span>{" "}
+              <span className="text-accent-bright font-medium">qring set</span> OPENAI_API_KEY sk-...
               {"\n\n"}
-              <span className="t-comment"># Retrieve it anytime</span>
+              <span className="text-[#555]"># Retrieve it anytime</span>
               {"\n"}
-              <span className="t-prompt">$</span>{" "}
-              <span className="t-cmd">qring get</span> OPENAI_API_KEY
+              <span className="text-green font-bold">$</span>{" "}
+              <span className="text-accent-bright font-medium">qring get</span> OPENAI_API_KEY
               {"\n\n"}
-              <span className="t-comment">
+              <span className="text-[#555]">
                 # List all keys (values are never shown)
               </span>
               {"\n"}
-              <span className="t-prompt">$</span>{" "}
-              <span className="t-cmd">qring list</span>
+              <span className="text-green font-bold">$</span>{" "}
+              <span className="text-accent-bright font-medium">qring list</span>
               {"\n\n"}
-              <span className="t-comment">
+              <span className="text-[#555]">
                 # Generate a cryptographic secret and save it
               </span>
               {"\n"}
-              <span className="t-prompt">$</span>{" "}
-              <span className="t-cmd">qring generate</span> --format api-key
+              <span className="text-green font-bold">$</span>{" "}
+              <span className="text-accent-bright font-medium">qring generate</span> --format api-key
               --prefix &quot;sk-&quot; --save MY_KEY
               {"\n\n"}
-              <span className="t-comment"># Run a full health scan</span>
+              <span className="text-[#555]"># Run a full health scan</span>
               {"\n"}
-              <span className="t-prompt">$</span>{" "}
-              <span className="t-cmd">qring health</span>
+              <span className="text-green font-bold">$</span>{" "}
+              <span className="text-accent-bright font-medium">qring health</span>
             </pre>
-          </div>
-        </div>
+          </CopyableTerminal>
+        </FadeIn>
       </div>
     </section>
   );
