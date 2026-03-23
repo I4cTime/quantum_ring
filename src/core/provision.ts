@@ -6,7 +6,7 @@
  */
 
 import { request as httpsRequest } from "node:https";
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 
 export interface ProvisionResult {
   value: string;
@@ -54,10 +54,14 @@ const awsStsProvider: JitProvider = {
 
     if (!roleArn) throw new Error("aws-sts requires roleArn in config");
 
-    const cmd = `aws sts assume-role --role-arn "${roleArn}" --role-session-name "${sessionName}" --duration-seconds ${duration} --output json`;
-    
     try {
-      const output = execSync(cmd, { encoding: "utf8" });
+      const output = execFileSync("aws", [
+        "sts", "assume-role",
+        "--role-arn", roleArn,
+        "--role-session-name", sessionName,
+        "--duration-seconds", String(duration),
+        "--output", "json",
+      ], { encoding: "utf8" });
       const parsed = JSON.parse(output);
       const creds = parsed.Credentials;
       
@@ -79,7 +83,7 @@ const awsStsProvider: JitProvider = {
 
 const httpProvider: JitProvider = {
   name: "http",
-  description: "Generic HTTP token endpoint (POST) using curl",
+  description: "Generic HTTP token endpoint (POST) using Node.js https",
   provision(configRaw: string): ProvisionResult {
     let config: any;
     try {
@@ -95,19 +99,39 @@ const httpProvider: JitProvider = {
 
     if (!url) throw new Error("http provider requires url in config");
 
-    // Build curl command securely
-    let cmd = `curl -s -X ${method} "${url}"`;
-    if (config.headers) {
-      for (const [k, v] of Object.entries(config.headers)) {
-        cmd += ` -H "${k}: ${v}"`;
-      }
-    }
+    // Use synchronous approach with Node.js https
+    const parsedUrl = new URL(url);
+    const headers: Record<string, string> = {
+      "User-Agent": "q-ring-jit/1.0",
+      ...(config.headers ?? {}),
+    };
+    let bodyStr: string | undefined;
     if (config.body) {
-      cmd += ` -H "Content-Type: application/json" -d '${JSON.stringify(config.body).replace(/'/g, "'\\''")}'`;
+      headers["Content-Type"] = "application/json";
+      bodyStr = JSON.stringify(config.body);
     }
 
     try {
-      const output = execSync(cmd, { encoding: "utf8" });
+      const output = execFileSync("node", [
+        "-e",
+        `
+const http = require(${JSON.stringify(parsedUrl.protocol === "https:" ? "node:https" : "node:http")});
+const options = {
+  method: ${JSON.stringify(method)},
+  headers: ${JSON.stringify(headers)},
+  timeout: 30000,
+};
+const req = http.request(${JSON.stringify(url)}, options, (res) => {
+  let body = "";
+  res.on("data", (chunk) => body += chunk);
+  res.on("end", () => process.stdout.write(body));
+});
+req.on("error", (e) => { process.stderr.write(e.message); process.exit(1); });
+${bodyStr ? `req.write(${JSON.stringify(bodyStr)});` : ""}
+req.end();
+`,
+      ], { encoding: "utf8", timeout: 35000 });
+
       const parsed = JSON.parse(output);
       let val = parsed;
       for (const key of valuePath.split(".")) {

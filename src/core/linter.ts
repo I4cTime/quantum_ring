@@ -8,7 +8,7 @@
 
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { basename, extname } from "node:path";
-import { scanCodebase, type ScanResult } from "./scan.js";
+import { type ScanResult } from "./scan.js";
 import { setSecret, hasSecret } from "./keyring.js";
 
 export interface LintResult extends ScanResult {
@@ -124,10 +124,13 @@ export function lintFiles(
     }
 
     if (opts.fix && fixes.length > 0) {
-      let newContent = content;
+      const fixLines = content.split(/\r?\n/);
       // Apply fixes in reverse order to preserve line positions
       for (const fix of fixes.reverse()) {
-        newContent = newContent.replace(fix.original, fix.replacement);
+        const lineIdx = fix.line;
+        if (lineIdx >= 0 && lineIdx < fixLines.length) {
+          fixLines[lineIdx] = fixLines[lineIdx].replace(fix.original, fix.replacement);
+        }
 
         if (!hasSecret(fix.keyName, { scope: opts.scope, projectPath: opts.projectPath })) {
           setSecret(fix.keyName, fix.value, {
@@ -139,7 +142,7 @@ export function lintFiles(
         }
       }
 
-      writeFileSync(file, newContent, "utf8");
+      writeFileSync(file, fixLines.join("\n"), "utf8");
     }
   }
 

@@ -9,7 +9,7 @@
  */
 
 import { execSync } from "node:child_process";
-import { existsSync, writeFileSync, chmodSync, readFileSync } from "node:fs";
+import { existsSync, writeFileSync, chmodSync, readFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
 import { lintFiles } from "../core/linter.js";
 
@@ -108,7 +108,6 @@ export function uninstallPreCommitHook(repoPath?: string): boolean {
 
   if (cleaned.filter((l) => l.trim() && !l.startsWith("#!")).length === 0) {
     // Nothing left, delete the file
-    const { unlinkSync } = require("node:fs");
     unlinkSync(hookPath);
   } else {
     writeFileSync(hookPath, cleaned.join("\n"), "utf8");
