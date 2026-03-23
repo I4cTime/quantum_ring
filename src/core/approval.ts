@@ -1,0 +1,177 @@
+/**
+ * Stronger Approval Workflows (Zero-Trust Agent)
+ *
+ * Manages scoped, reasoned, time-limited approval tokens for accessing
+ * protected secrets via MCP. Each token carries:
+ * - Reason: why the approval was granted
+ * - Workspace / session binding
+ * - HMAC verification to prevent tampering
+ * - Expiry enforcement
+ *
+ * Approvals are stored in a file so the CLI can grant them and the MCP
+ * server can read and verify them.
+ */
+
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { homedir } from "node:os";
+import { createHmac, randomBytes } from "node:crypto";
+
+export interface ApprovalEntry {
+  id: string;
+  key: string;
+  scope: string;
+  reason: string;
+  grantedBy: string;
+  grantedAt: string;
+  expiresAt: string;
+  workspace?: string;
+  sessionId?: string;
+  hmac: string;
+}
+
+interface ApprovalRegistry {
+  approvals: ApprovalEntry[];
+}
+
+function getHmacSecret(): string {
+  const secretPath = join(homedir(), ".config", "q-ring", ".approval-key");
+  const dir = join(homedir(), ".config", "q-ring");
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+
+  if (existsSync(secretPath)) {
+    return readFileSync(secretPath, "utf8").trim();
+  }
+  const secret = randomBytes(32).toString("hex");
+  writeFileSync(secretPath, secret, { mode: 0o600 });
+  return secret;
+}
+
+function computeHmac(entry: Omit<ApprovalEntry, "hmac">): string {
+  const payload = `${entry.id}|${entry.key}|${entry.scope}|${entry.reason}|${entry.grantedBy}|${entry.grantedAt}|${entry.expiresAt}`;
+  return createHmac("sha256", getHmacSecret()).update(payload).digest("hex");
+}
+
+function verifyHmac(entry: ApprovalEntry): boolean {
+  const expected = computeHmac(entry);
+  return expected === entry.hmac;
+}
+
+function getRegistryPath(): string {
+  const dir = join(homedir(), ".config", "q-ring");
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
+  return join(dir, "approvals.json");
+}
+
+function loadRegistry(): ApprovalRegistry {
+  const path = getRegistryPath();
+  if (!existsSync(path)) {
+    return { approvals: [] };
+  }
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    return { approvals: [] };
+  }
+}
+
+function saveRegistry(registry: ApprovalRegistry): void {
+  writeFileSync(getRegistryPath(), JSON.stringify(registry, null, 2), { mode: 0o600 });
+}
+
+function cleanup(registry: ApprovalRegistry): void {
+  const now = Date.now();
+  registry.approvals = registry.approvals.filter(
+    (a) => new Date(a.expiresAt).getTime() > now,
+  );
+}
+
+export interface GrantOptions {
+  reason?: string;
+  grantedBy?: string;
+  workspace?: string;
+  sessionId?: string;
+}
+
+export function grantApproval(
+  key: string,
+  scope: string,
+  ttlSeconds: number = 3600,
+  grantOpts: GrantOptions = {},
+): ApprovalEntry {
+  const registry = loadRegistry();
+  cleanup(registry);
+
+  const id = randomBytes(8).toString("hex");
+  const grantedAt = new Date().toISOString();
+  const expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();
+
+  const partial: Omit<ApprovalEntry, "hmac"> = {
+    id,
+    key,
+    scope,
+    reason: grantOpts.reason ?? "no reason provided",
+    grantedBy: grantOpts.grantedBy ?? "cli-user",
+    grantedAt,
+    expiresAt,
+    workspace: grantOpts.workspace,
+    sessionId: grantOpts.sessionId,
+  };
+
+  const entry: ApprovalEntry = { ...partial, hmac: computeHmac(partial) };
+
+  const existingIdx = registry.approvals.findIndex(
+    (a) => a.key === key && a.scope === scope,
+  );
+  if (existingIdx >= 0) {
+    registry.approvals[existingIdx] = entry;
+  } else {
+    registry.approvals.push(entry);
+  }
+
+  saveRegistry(registry);
+  return entry;
+}
+
+export function revokeApproval(key: string, scope: string): boolean {
+  const registry = loadRegistry();
+  const before = registry.approvals.length;
+  registry.approvals = registry.approvals.filter(
+    (a) => !(a.key === key && a.scope === scope),
+  );
+  saveRegistry(registry);
+  return registry.approvals.length < before;
+}
+
+export function hasApproval(key: string, scope: string): boolean {
+  const registry = loadRegistry();
+  const entry = registry.approvals.find(
+    (a) => a.key === key && a.scope === scope,
+  );
+  if (!entry) return false;
+  if (new Date(entry.expiresAt).getTime() < Date.now()) return false;
+  if (!verifyHmac(entry)) return false;
+  return true;
+}
+
+export function getApprovalDetail(key: string, scope: string): ApprovalEntry | null {
+  const registry = loadRegistry();
+  const entry = registry.approvals.find(
+    (a) => a.key === key && a.scope === scope,
+  );
+  if (!entry) return null;
+  if (new Date(entry.expiresAt).getTime() < Date.now()) return null;
+  return entry;
+}
+
+export function listApprovals(): (ApprovalEntry & { valid: boolean; tampered: boolean })[] {
+  const registry = loadRegistry();
+  const now = Date.now();
+  return registry.approvals.map((a) => ({
+    ...a,
+    valid: new Date(a.expiresAt).getTime() > now,
+    tampered: !verifyHmac(a),
+  }));
+}

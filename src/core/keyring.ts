@@ -3,6 +3,8 @@ import {
   resolveScope,
   globalService,
   projectService,
+  teamService,
+  orgService,
   type Scope,
 } from "./scope.js";
 import {
@@ -22,6 +24,9 @@ import { collapseEnvironment, type CollapseContext } from "./collapse.js";
 import { logAudit, type AuditAction } from "./observer.js";
 import { findEntangled, entangle as entangleLink, disentangle as disentangleLink } from "./entanglement.js";
 import { fireHooks } from "./hooks.js";
+import { hasApproval } from "./approval.js";
+import { registry as jitRegistry } from "./provision.js";
+import { checkKeyReadPolicy } from "./policy.js";
 
 export interface SecretEntry {
   key: string;
@@ -34,10 +39,14 @@ export interface SecretEntry {
 export interface KeyringOptions {
   scope?: Scope;
   projectPath?: string;
+  /** Team identifier for team-scoped secrets */
+  teamId?: string;
+  /** Org identifier for org-scoped secrets */
+  orgId?: string;
   /** Environment for superposition collapse */
   env?: Environment;
   /** Audit source */
-  source?: "cli" | "mcp" | "agent" | "api";
+  source?: "cli" | "mcp" | "agent" | "api" | "hook" | "ci";
   /** Skip audit logging (for internal polling like the dashboard) */
   silent?: boolean;
 }
@@ -61,6 +70,10 @@ export interface SetSecretOptions extends KeyringOptions {
   rotationPrefix?: string;
   /** Provider for liveness validation (e.g. "openai", "stripe") */
   provider?: string;
+  /** Whether reading this secret via MCP requires explicit user approval */
+  requiresApproval?: boolean;
+  /** Just-In-Time (JIT) provisioning provider name (e.g. "aws-sts") */
+  jitProvider?: string;
 }
 
 function readEnvelope(service: string, key: string): QuantumEnvelope | null {
@@ -87,17 +100,62 @@ function resolveEnv(opts: KeyringOptions): Environment | undefined {
   return result?.env;
 }
 
+function resolveTemplates(value: string, opts: KeyringOptions & { _seen?: Set<string> }, seen: Set<string>): string {
+  if (!value.includes("{{") || !value.includes("}}")) return value;
+  
+  return value.replace(/\{\{([^}]+)\}\}/g, (match, refKeyRaw) => {
+    const refKey = refKeyRaw.trim();
+    const refValue = getSecret(refKey, { ...opts, _seen: seen });
+    if (refValue === null) {
+      throw new Error(`Template resolution failed: referenced secret "${refKey}" not found`);
+    }
+    return refValue;
+  });
+}
+
+export function resolveTemplatesOffline(value: string, rawValues: Map<string, string>, seen: Set<string>): string {
+  if (!value.includes("{{") || !value.includes("}}")) return value;
+  
+  return value.replace(/\{\{([^}]+)\}\}/g, (match, refKeyRaw) => {
+    const refKey = refKeyRaw.trim();
+    if (seen.has(refKey)) {
+      throw new Error(`Circular dependency detected: ${[...seen].join(" -> ")} -> ${refKey}`);
+    }
+    const rawRef = rawValues.get(refKey);
+    if (rawRef === undefined) {
+      throw new Error(`Template resolution failed: referenced secret "${refKey}" not found`);
+    }
+    const nextSeen = new Set(seen);
+    nextSeen.add(refKey);
+    return resolveTemplatesOffline(rawRef, rawValues, nextSeen);
+  });
+}
+
 /**
  * Retrieve a secret by key, with scope resolution and superposition collapse.
  * Records the access in the audit log (observer effect).
  */
 export function getSecret(
   key: string,
-  opts: KeyringOptions = {},
+  opts: KeyringOptions & { _seen?: Set<string> } = {},
 ): string | null {
   const scopes = resolveScope(opts);
   const env = resolveEnv(opts);
   const source = opts.source ?? "cli";
+  const seen = opts._seen ?? new Set<string>();
+
+  if (source === "mcp") {
+    const policyDecision = checkKeyReadPolicy(key, undefined, opts.projectPath);
+    if (!policyDecision.allowed) {
+      throw new Error(`Policy Denied: ${policyDecision.reason}`);
+    }
+  }
+
+  if (seen.has(key)) {
+    throw new Error(`Circular dependency detected: ${[...seen].join(" -> ")} -> ${key}`);
+  }
+  const nextSeen = new Set(seen);
+  nextSeen.add(key);
 
   for (const { service, scope } of scopes) {
     const envelope = readEnvelope(service, key);
@@ -106,25 +164,67 @@ export function getSecret(
     // Check decay
     const decay = checkDecay(envelope);
     if (decay.isExpired) {
-      logAudit({
-        action: "read",
-        key,
-        scope,
-        source,
-        detail: "blocked: secret expired (quantum decay)",
-      });
+      if (!opts.silent) {
+        logAudit({
+          action: "read",
+          key,
+          scope,
+          source,
+          detail: "blocked: secret expired (quantum decay)",
+        });
+      }
       continue;
     }
 
+    // Check approvals for MCP
+    if (envelope.meta.requiresApproval && source === "mcp") {
+      if (!hasApproval(key, scope)) {
+        if (!opts.silent) {
+          logAudit({
+            action: "read",
+            key,
+            scope,
+            source,
+            detail: "blocked: requires user approval",
+          });
+        }
+        throw new Error(`Access Denied: This secret requires user approval. Please ask the user to run 'qring approve ${key}'`);
+      }
+    }
+
     // Collapse superposition
-    const value = collapseValue(envelope, env);
+    let value = collapseValue(envelope, env);
     if (value === null) continue;
 
-    // Observer effect: record access and persist
-    const updated = recordAccess(envelope);
-    writeEnvelope(service, key, updated);
+    // Just-In-Time Provisioning
+    if (envelope.meta.jitProvider) {
+      const provider = jitRegistry.get(envelope.meta.jitProvider);
+      if (provider) {
+        let isExpired = true;
+        if (envelope.states && envelope.states["jit"] && envelope.meta.jitExpiresAt) {
+          isExpired = new Date(envelope.meta.jitExpiresAt).getTime() <= Date.now();
+        }
 
-    logAudit({ action: "read", key, scope, env, source });
+        if (isExpired) {
+          const result = provider.provision(value); // value contains the config
+          envelope.states = envelope.states ?? {};
+          envelope.states["jit"] = result.value;
+          envelope.meta.jitExpiresAt = result.expiresAt;
+          writeEnvelope(service, key, envelope);
+        }
+        value = envelope.states!["jit"];
+      }
+    }
+
+    // Resolve templates
+    value = resolveTemplates(value, { ...opts, _seen: nextSeen }, nextSeen);
+
+    // Observer effect: record access and persist
+    if (!opts.silent) {
+      const updated = recordAccess(envelope);
+      writeEnvelope(service, key, updated);
+      logAudit({ action: "read", key, scope, env, source });
+    }
 
     return value;
   }
@@ -170,6 +270,7 @@ export function setSecret(
   const rotFmt = opts.rotationFormat ?? existing?.meta.rotationFormat;
   const rotPfx = opts.rotationPrefix ?? existing?.meta.rotationPrefix;
   const prov = opts.provider ?? existing?.meta.provider;
+  const reqApp = opts.requiresApproval ?? existing?.meta.requiresApproval;
 
   if (opts.states) {
     envelope = createEnvelope("", {
@@ -183,6 +284,7 @@ export function setSecret(
       rotationFormat: rotFmt,
       rotationPrefix: rotPfx,
       provider: prov,
+      requiresApproval: reqApp,
     });
   } else {
     envelope = createEnvelope(value, {
@@ -194,6 +296,7 @@ export function setSecret(
       rotationFormat: rotFmt,
       rotationPrefix: rotPfx,
       provider: prov,
+      requiresApproval: reqApp,
     });
   }
 
@@ -312,6 +415,14 @@ export function listSecrets(opts: KeyringOptions = {}): SecretEntry[] {
     });
   }
 
+  if ((!opts.scope || opts.scope === "team") && opts.teamId) {
+    services.push({ service: teamService(opts.teamId), scope: "team" });
+  }
+
+  if ((!opts.scope || opts.scope === "org") && opts.orgId) {
+    services.push({ service: orgService(opts.orgId), scope: "org" });
+  }
+
   const results: SecretEntry[] = [];
   const seen = new Set<string>();
 
@@ -368,7 +479,7 @@ export function exportSecrets(
     );
   }
 
-  const merged = new Map<string, string>();
+  const rawValues = new Map<string, string>();
 
   const globalEntries = entries.filter((e) => e.scope === "global");
   const projectEntries = entries.filter((e) => e.scope === "project");
@@ -380,8 +491,19 @@ export function exportSecrets(
 
       const value = collapseValue(entry.envelope, env);
       if (value !== null) {
-        merged.set(entry.key, value);
+        rawValues.set(entry.key, value);
       }
+    }
+  }
+
+  const merged = new Map<string, string>();
+  for (const [key, value] of rawValues) {
+    try {
+      const resolved = resolveTemplatesOffline(value, rawValues, new Set([key]));
+      merged.set(key, resolved);
+    } catch (err) {
+      // In export, if a template fails, we just don't export it
+      console.warn(`Warning: skipped exporting ${key} due to template error: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 

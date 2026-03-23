@@ -4,11 +4,16 @@
  *
  * The act of observation changes the state — each access increments
  * the envelope's access counter and records a timestamp.
+ *
+ * Hash-chain integrity: each event includes a SHA-256 hash of the
+ * previous event, creating a tamper-evident chain. If any event is
+ * modified or deleted, the chain breaks and `audit:verify` reports it.
  */
 
-import { existsSync, mkdirSync, appendFileSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
+import { createHash } from "node:crypto";
 
 export type AuditAction =
   | "read"
@@ -20,7 +25,11 @@ export type AuditAction =
   | "entangle"
   | "tunnel"
   | "teleport"
-  | "collapse";
+  | "collapse"
+  | "approve"
+  | "revoke"
+  | "policy_deny"
+  | "rotate";
 
 export interface AuditEvent {
   timestamp: string;
@@ -28,11 +37,13 @@ export interface AuditEvent {
   key?: string;
   scope?: string;
   env?: string;
-  source: "cli" | "mcp" | "agent" | "api";
-  /** Additional context */
+  source: "cli" | "mcp" | "agent" | "api" | "hook" | "ci";
   detail?: string;
-  /** Process ID for tracking */
   pid: number;
+  /** SHA-256 hash of the previous event line for chain integrity */
+  prevHash?: string;
+  /** Correlation ID to group related events across a single operation */
+  correlationId?: string;
 }
 
 function getAuditDir(): string {
@@ -47,11 +58,32 @@ function getAuditPath(): string {
   return join(getAuditDir(), "audit.jsonl");
 }
 
-export function logAudit(event: Omit<AuditEvent, "timestamp" | "pid">): void {
+function getLastLineHash(): string | undefined {
+  const path = getAuditPath();
+  if (!existsSync(path)) return undefined;
+
+  try {
+    const content = readFileSync(path, "utf8");
+    const lines = content.split("\n").filter((l) => l.trim());
+    if (lines.length === 0) return undefined;
+
+    const lastLine = lines[lines.length - 1];
+    return createHash("sha256").update(lastLine).digest("hex");
+  } catch {
+    return undefined;
+  }
+}
+
+export function logAudit(
+  event: Omit<AuditEvent, "timestamp" | "pid" | "prevHash">,
+): void {
+  const prevHash = getLastLineHash();
+
   const full: AuditEvent = {
     ...event,
     timestamp: new Date().toISOString(),
     pid: process.pid,
+    prevHash,
   };
 
   try {
@@ -66,6 +98,8 @@ export interface AuditQuery {
   action?: AuditAction;
   since?: string;
   limit?: number;
+  source?: AuditEvent["source"];
+  correlationId?: string;
 }
 
 export function queryAudit(query: AuditQuery = {}): AuditEvent[] {
@@ -87,17 +121,13 @@ export function queryAudit(query: AuditQuery = {}): AuditEvent[] {
       })
       .filter((e): e is AuditEvent => e !== null);
 
-    if (query.key) {
-      events = events.filter((e) => e.key === query.key);
-    }
-    if (query.action) {
-      events = events.filter((e) => e.action === query.action);
-    }
+    if (query.key) events = events.filter((e) => e.key === query.key);
+    if (query.action) events = events.filter((e) => e.action === query.action);
+    if (query.source) events = events.filter((e) => e.source === query.source);
+    if (query.correlationId) events = events.filter((e) => e.correlationId === query.correlationId);
     if (query.since) {
       const since = new Date(query.since).getTime();
-      events = events.filter(
-        (e) => new Date(e.timestamp).getTime() >= since,
-      );
+      events = events.filter((e) => new Date(e.timestamp).getTime() >= since);
     }
 
     events.sort(
@@ -105,9 +135,7 @@ export function queryAudit(query: AuditQuery = {}): AuditEvent[] {
         new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
     );
 
-    if (query.limit) {
-      events = events.slice(0, query.limit);
-    }
+    if (query.limit) events = events.slice(0, query.limit);
 
     return events;
   } catch {
@@ -115,25 +143,139 @@ export function queryAudit(query: AuditQuery = {}): AuditEvent[] {
   }
 }
 
+export interface VerifyResult {
+  totalEvents: number;
+  validEvents: number;
+  brokenAt?: number;
+  brokenEvent?: AuditEvent;
+  intact: boolean;
+}
+
+/**
+ * Verify the hash-chain integrity of the entire audit log.
+ * Returns the first break point if the chain has been tampered with.
+ */
+export function verifyAuditChain(): VerifyResult {
+  const path = getAuditPath();
+  if (!existsSync(path)) {
+    return { totalEvents: 0, validEvents: 0, intact: true };
+  }
+
+  const lines = readFileSync(path, "utf8")
+    .split("\n")
+    .filter((l) => l.trim());
+
+  if (lines.length === 0) {
+    return { totalEvents: 0, validEvents: 0, intact: true };
+  }
+
+  let validEvents = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    let event: AuditEvent;
+    try {
+      event = JSON.parse(lines[i]);
+    } catch {
+      return {
+        totalEvents: lines.length,
+        validEvents,
+        brokenAt: i,
+        intact: false,
+      };
+    }
+
+    if (i === 0) {
+      validEvents++;
+      continue;
+    }
+
+    const expectedHash = createHash("sha256")
+      .update(lines[i - 1])
+      .digest("hex");
+
+    if (event.prevHash !== expectedHash) {
+      return {
+        totalEvents: lines.length,
+        validEvents,
+        brokenAt: i,
+        brokenEvent: event,
+        intact: false,
+      };
+    }
+
+    validEvents++;
+  }
+
+  return { totalEvents: lines.length, validEvents, intact: true };
+}
+
+export interface ExportOptions {
+  since?: string;
+  until?: string;
+  format?: "jsonl" | "json" | "csv";
+}
+
+/**
+ * Export audit events in a portable format, optionally filtered by time range.
+ */
+export function exportAudit(opts: ExportOptions = {}): string {
+  const path = getAuditPath();
+  if (!existsSync(path)) return opts.format === "json" ? "[]" : "";
+
+  const lines = readFileSync(path, "utf8")
+    .split("\n")
+    .filter((l) => l.trim());
+
+  let events: AuditEvent[] = lines
+    .map((l) => {
+      try {
+        return JSON.parse(l) as AuditEvent;
+      } catch {
+        return null;
+      }
+    })
+    .filter((e): e is AuditEvent => e !== null);
+
+  if (opts.since) {
+    const since = new Date(opts.since).getTime();
+    events = events.filter((e) => new Date(e.timestamp).getTime() >= since);
+  }
+  if (opts.until) {
+    const until = new Date(opts.until).getTime();
+    events = events.filter((e) => new Date(e.timestamp).getTime() <= until);
+  }
+
+  if (opts.format === "json") {
+    return JSON.stringify(events, null, 2);
+  }
+
+  if (opts.format === "csv") {
+    const header = "timestamp,action,key,scope,env,source,pid,correlationId,detail";
+    const rows = events.map(
+      (e) =>
+        `${e.timestamp},${e.action},${e.key ?? ""},${e.scope ?? ""},${e.env ?? ""},${e.source},${e.pid},${e.correlationId ?? ""},${(e.detail ?? "").replace(/,/g, ";")}`,
+    );
+    return [header, ...rows].join("\n");
+  }
+
+  return events.map((e) => JSON.stringify(e)).join("\n");
+}
+
 export interface AccessAnomaly {
-  type: "burst" | "unusual-hour" | "new-source";
+  type: "burst" | "unusual-hour" | "new-source" | "tampered";
   description: string;
   events: AuditEvent[];
 }
 
-/**
- * Detect anomalous access patterns in the audit log.
- */
 export function detectAnomalies(key?: string): AccessAnomaly[] {
   const recent = queryAudit({
     key,
     action: "read",
-    since: new Date(Date.now() - 3600000).toISOString(), // last hour
+    since: new Date(Date.now() - 3600000).toISOString(),
   });
 
   const anomalies: AccessAnomaly[] = [];
 
-  // Burst detection: more than 50 reads of the same key in an hour
   if (key && recent.length > 50) {
     anomalies.push({
       type: "burst",
@@ -142,7 +284,6 @@ export function detectAnomalies(key?: string): AccessAnomaly[] {
     });
   }
 
-  // Unusual hour detection: access between 1am-5am local time
   const nightAccess = recent.filter((e) => {
     const hour = new Date(e.timestamp).getHours();
     return hour >= 1 && hour < 5;
@@ -153,6 +294,15 @@ export function detectAnomalies(key?: string): AccessAnomaly[] {
       type: "unusual-hour",
       description: `${nightAccess.length} access(es) during unusual hours (1am-5am)`,
       events: nightAccess,
+    });
+  }
+
+  const verification = verifyAuditChain();
+  if (!verification.intact) {
+    anomalies.push({
+      type: "tampered",
+      description: `Audit chain broken at event #${verification.brokenAt}`,
+      events: verification.brokenEvent ? [verification.brokenEvent] : [],
     });
   }
 

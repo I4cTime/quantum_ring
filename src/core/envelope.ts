@@ -40,6 +40,14 @@ export interface SecretMetadata {
   rotationPrefix?: string;
   /** Provider name for liveness validation (e.g. "openai", "stripe", "github") */
   provider?: string;
+  /** Custom validation URL for generic HTTP provider */
+  validationUrl?: string;
+  /** Whether reading this secret via MCP requires explicit user approval */
+  requiresApproval?: boolean;
+  /** Just-In-Time (JIT) provisioning provider name (e.g. "aws-sts") */
+  jitProvider?: string;
+  /** Expiration timestamp for the cached JIT credential */
+  jitExpiresAt?: string;
 }
 
 export interface QuantumEnvelope {
@@ -66,6 +74,8 @@ export function createEnvelope(
     rotationFormat?: string;
     rotationPrefix?: string;
     provider?: string;
+    requiresApproval?: boolean;
+    jitProvider?: string;
   },
 ): QuantumEnvelope {
   const now = new Date().toISOString();
@@ -92,6 +102,8 @@ export function createEnvelope(
       rotationFormat: opts?.rotationFormat,
       rotationPrefix: opts?.rotationPrefix,
       provider: opts?.provider,
+      requiresApproval: opts?.requiresApproval,
+      jitProvider: opts?.jitProvider,
     },
   };
 }
