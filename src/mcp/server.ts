@@ -16,7 +16,7 @@ import { runHealthScan } from "../core/agent.js";
 import { checkDecay, collapseValue } from "../core/envelope.js";
 import { collapseEnvironment, readProjectConfig } from "../core/collapse.js";
 import type { Scope } from "../core/scope.js";
-import { queryAudit, detectAnomalies } from "../core/observer.js";
+import { queryAudit, detectAnomalies, verifyAuditChain, exportAudit } from "../core/observer.js";
 import {
   generateSecret,
   estimateEntropy,
@@ -30,7 +30,13 @@ import {
 } from "../core/tunnel.js";
 import { teleportPack, teleportUnpack } from "../core/teleport.js";
 import { importDotenv, parseDotenv } from "../core/import.js";
-import { validateSecret, registry as providerRegistry } from "../core/validate.js";
+import { execCommand } from "../core/exec.js";
+import { scanCodebase } from "../core/scan.js";
+import { lintFiles } from "../core/linter.js";
+import { getProjectContext } from "../core/context.js";
+import { remember, recall, listMemory, forget } from "../core/memory.js";
+import { checkToolPolicy, checkKeyReadPolicy, checkExecPolicy, getPolicySummary } from "../core/policy.js";
+import { validateSecret, rotateWithProvider, ciValidateBatch, registry as providerRegistry } from "../core/validate.js";
 import {
   registerHook,
   removeHook,
@@ -50,13 +56,25 @@ function opts(params: {
   scope?: string;
   projectPath?: string;
   env?: string;
+  teamId?: string;
+  orgId?: string;
 }): KeyringOptions {
   return {
     scope: params.scope as Scope | undefined,
     projectPath: params.projectPath ?? process.cwd(),
+    teamId: params.teamId,
+    orgId: params.orgId,
     env: params.env,
     source: "mcp",
   };
+}
+
+function enforceToolPolicy(toolName: string, projectPath?: string) {
+  const decision = checkToolPolicy(toolName, projectPath);
+  if (!decision.allowed) {
+    return text(`Policy Denied: ${decision.reason} (source: ${decision.policySource})`, true);
+  }
+  return null;
 }
 
 export function createMcpServer(): McpServer {
@@ -65,8 +83,10 @@ export function createMcpServer(): McpServer {
     version: "0.2.0",
   });
 
+  const teamIdSchema = z.string().optional().describe("Team identifier for team-scoped secrets");
+  const orgIdSchema = z.string().optional().describe("Org identifier for org-scoped secrets");
   const scopeSchema = z
-    .enum(["global", "project"])
+    .enum(["global", "project", "team", "org"])
     .optional()
     .describe("Scope: global or project");
   const projectPathSchema = z
@@ -90,9 +110,21 @@ export function createMcpServer(): McpServer {
       env: envSchema,
     },
     async (params) => {
-      const value = getSecret(params.key, opts(params));
-      if (value === null) return text(`Secret "${params.key}" not found`, true);
-      return text(value);
+      const toolBlock = enforceToolPolicy("get_secret", params.projectPath);
+      if (toolBlock) return toolBlock;
+
+      try {
+        const keyBlock = checkKeyReadPolicy(params.key, undefined, params.projectPath);
+        if (!keyBlock.allowed) {
+          return text(`Policy Denied: ${keyBlock.reason}`, true);
+        }
+
+        const value = getSecret(params.key, opts(params));
+        if (value === null) return text(`Secret "${params.key}" not found`, true);
+        return text(value);
+      } catch (err) {
+        return text(err instanceof Error ? err.message : String(err), true);
+      }
     },
   );
 
@@ -980,6 +1012,195 @@ export function createMcpServer(): McpServer {
     },
   );
 
+  // ─── Exec Tools ───
+
+  server.tool(
+    "exec_with_secrets",
+    "Run a shell command securely. Project secrets are injected into the environment, and any secret values in the output are automatically redacted to prevent leaking into transcripts.",
+    {
+      command: z.string().describe("Command to run"),
+      args: z.array(z.string()).optional().describe("Command arguments"),
+      keys: z.array(z.string()).optional().describe("Only inject these specific keys"),
+      tags: z.array(z.string()).optional().describe("Only inject secrets with these tags"),
+      profile: z.enum(["unrestricted", "restricted", "ci"]).optional().default("restricted").describe("Exec profile: unrestricted, restricted, or ci"),
+      scope: scopeSchema,
+      projectPath: projectPathSchema,
+    },
+    async (params) => {
+      const toolBlock = enforceToolPolicy("exec_with_secrets", params.projectPath);
+      if (toolBlock) return toolBlock;
+
+      const execBlock = checkExecPolicy(params.command, params.projectPath);
+      if (!execBlock.allowed) {
+        return text(`Policy Denied: ${execBlock.reason}`, true);
+      }
+
+      try {
+        const result = await execCommand({
+          command: params.command,
+          args: params.args ?? [],
+          keys: params.keys,
+          tags: params.tags,
+          profile: params.profile,
+          scope: params.scope,
+          projectPath: params.projectPath,
+          source: "mcp",
+          captureOutput: true,
+        });
+
+        const output = [];
+        output.push(`Exit code: ${result.code}`);
+        if (result.stdout) output.push(`STDOUT:\n${result.stdout}`);
+        if (result.stderr) output.push(`STDERR:\n${result.stderr}`);
+
+        return text(output.join("\n\n"));
+      } catch (err) {
+        return text(`Execution failed: ${err instanceof Error ? err.message : String(err)}`, true);
+      }
+    },
+  );
+
+  // ─── Scan Tools ───
+
+  server.tool(
+    "scan_codebase_for_secrets",
+    "Scan a directory for hardcoded secrets using regex heuristics and Shannon entropy analysis. Returns file paths, line numbers, and the matched key/value to help migrate legacy codebases into q-ring.",
+    {
+      dirPath: z.string().describe("Absolute or relative path to the directory to scan"),
+    },
+    async (params) => {
+      try {
+        const results = scanCodebase(params.dirPath);
+        if (results.length === 0) {
+          return text("No hardcoded secrets found in the specified directory.");
+        }
+        
+        return text(JSON.stringify(results, null, 2));
+      } catch (err) {
+        return text(`Scan failed: ${err instanceof Error ? err.message : String(err)}`, true);
+      }
+    },
+  );
+
+  // ─── AI Agent Tools ───
+
+  server.tool(
+    "get_project_context",
+    "Get a safe, redacted overview of the project's secrets, environment, manifest, providers, hooks, and recent audit activity. No secret values are ever exposed. Use this to understand what secrets exist before asking to read them.",
+    {
+      scope: scopeSchema,
+      projectPath: projectPathSchema,
+    },
+    async (params) => {
+      const context = getProjectContext(opts(params));
+      return text(JSON.stringify(context, null, 2));
+    },
+  );
+
+  server.tool(
+    "agent_remember",
+    "Store a key-value pair in encrypted agent memory that persists across sessions. Use this to remember decisions, rotation history, or project-specific context.",
+    {
+      key: z.string().describe("Memory key"),
+      value: z.string().describe("Value to store"),
+    },
+    async (params) => {
+      remember(params.key, params.value);
+      return text(`Remembered "${params.key}"`);
+    },
+  );
+
+  server.tool(
+    "agent_recall",
+    "Retrieve a value from agent memory, or list all stored keys if no key is provided.",
+    {
+      key: z.string().optional().describe("Memory key to recall (omit to list all)"),
+    },
+    async (params) => {
+      if (!params.key) {
+        const entries = listMemory();
+        if (entries.length === 0) return text("Agent memory is empty");
+        return text(JSON.stringify(entries, null, 2));
+      }
+      const value = recall(params.key);
+      if (value === null) return text(`No memory found for "${params.key}"`, true);
+      return text(value);
+    },
+  );
+
+  server.tool(
+    "agent_forget",
+    "Delete a key from agent memory.",
+    {
+      key: z.string().describe("Memory key to forget"),
+    },
+    async (params) => {
+      const removed = forget(params.key);
+      return text(removed ? `Forgot "${params.key}"` : `No memory found for "${params.key}"`, !removed);
+    },
+  );
+
+  server.tool(
+    "lint_files",
+    "Scan specific files for hardcoded secrets. Optionally auto-fix by replacing them with process.env references and storing the values in q-ring.",
+    {
+      files: z.array(z.string()).describe("File paths to lint"),
+      fix: z.boolean().optional().default(false).describe("Auto-replace and store secrets"),
+      scope: scopeSchema,
+      projectPath: projectPathSchema,
+    },
+    async (params) => {
+      try {
+        const results = lintFiles(params.files, {
+          fix: params.fix,
+          scope: params.scope as any,
+          projectPath: params.projectPath,
+        });
+        if (results.length === 0) {
+          return text("No hardcoded secrets found in the specified files.");
+        }
+        return text(JSON.stringify(results, null, 2));
+      } catch (err) {
+        return text(`Lint failed: ${err instanceof Error ? err.message : String(err)}`, true);
+      }
+    },
+  );
+
+  server.tool(
+    "analyze_secrets",
+    "Analyze secret usage patterns and provide optimization suggestions including most accessed, stale, unused, and rotation recommendations.",
+    {
+      scope: scopeSchema,
+      projectPath: projectPathSchema,
+    },
+    async (params) => {
+      const o = opts(params);
+      const entries = listSecrets({ ...o, silent: true });
+      const audit = queryAudit({ limit: 500 });
+
+      const accessMap = new Map<string, number>();
+      for (const e of audit) {
+        if (e.action === "read" && e.key) {
+          accessMap.set(e.key, (accessMap.get(e.key) || 0) + 1);
+        }
+      }
+
+      const analysis = {
+        total: entries.length,
+        expired: entries.filter(e => e.decay?.isExpired).length,
+        stale: entries.filter(e => e.decay?.isStale && !e.decay?.isExpired).length,
+        neverAccessed: entries.filter(e => (e.envelope?.meta.accessCount ?? 0) === 0).map(e => e.key),
+        noRotationFormat: entries.filter(e => !e.envelope?.meta.rotationFormat).map(e => e.key),
+        mostAccessed: [...accessMap.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10)
+          .map(([key, count]) => ({ key, reads: count })),
+      };
+
+      return text(JSON.stringify(analysis, null, 2));
+    },
+  );
+
   // ─── Status Dashboard ───
 
   let dashboardInstance: { port: number; close: () => void } | null = null;
@@ -1024,6 +1245,136 @@ export function createMcpServer(): McpServer {
         projectPaths: params.projectPaths ?? [process.cwd()],
       });
       return text(JSON.stringify(report, null, 2));
+    },
+  );
+
+  // ─── Audit Integrity ───
+
+  server.tool(
+    "verify_audit_chain",
+    "Verify the tamper-evident hash chain of the audit log. Returns integrity status and the first break point if tampered.",
+    {},
+    async () => {
+      const result = verifyAuditChain();
+      return text(JSON.stringify(result, null, 2));
+    },
+  );
+
+  server.tool(
+    "export_audit",
+    "Export audit events in a portable format (jsonl, json, or csv) with optional time range filtering.",
+    {
+      since: z.string().optional().describe("Start date (ISO 8601)"),
+      until: z.string().optional().describe("End date (ISO 8601)"),
+      format: z.enum(["jsonl", "json", "csv"]).optional().default("jsonl").describe("Output format"),
+    },
+    async (params) => {
+      const output = exportAudit({
+        since: params.since,
+        until: params.until,
+        format: params.format,
+      });
+      return text(output);
+    },
+  );
+
+  // ─── Rotation & CI ───
+
+  server.tool(
+    "rotate_secret",
+    "Attempt issuer-native rotation of a secret via its detected or specified provider. Returns rotation result.",
+    {
+      key: z.string().describe("The secret key to rotate"),
+      provider: z.string().optional().describe("Force a specific provider"),
+      scope: scopeSchema,
+      projectPath: projectPathSchema,
+    },
+    async (params) => {
+      const toolBlock = enforceToolPolicy("rotate_secret", params.projectPath);
+      if (toolBlock) return toolBlock;
+
+      const value = getSecret(params.key, opts(params));
+      if (!value) return text(`Secret "${params.key}" not found`, true);
+
+      const result = await rotateWithProvider(value, params.provider);
+      if (result.rotated && result.newValue) {
+        setSecret(params.key, result.newValue, {
+          scope: (params.scope as Scope) ?? "global",
+          projectPath: params.projectPath,
+          source: "mcp",
+        });
+      }
+      return text(JSON.stringify(result, null, 2));
+    },
+  );
+
+  server.tool(
+    "ci_validate_secrets",
+    "CI-oriented batch validation: validates all accessible secrets against their providers and returns a structured pass/fail report.",
+    {
+      scope: scopeSchema,
+      projectPath: projectPathSchema,
+    },
+    async (params) => {
+      const entries = listSecrets(opts(params));
+      const secrets = entries
+        .map((e) => {
+          const val = getSecret(e.key, { ...opts(params), scope: e.scope, silent: true });
+          if (!val) return null;
+          return {
+            key: e.key,
+            value: val,
+            provider: e.envelope?.meta.provider,
+            validationUrl: e.envelope?.meta.validationUrl,
+          };
+        })
+        .filter((s): s is NonNullable<typeof s> => s !== null);
+
+      if (secrets.length === 0) return text("No secrets to validate");
+
+      const report = await ciValidateBatch(secrets);
+      return text(JSON.stringify(report, null, 2));
+    },
+  );
+
+  // ─── Governance ───
+
+  server.tool(
+    "check_policy",
+    "Check if an action is allowed by the project's governance policy. Returns the policy decision and source.",
+    {
+      action: z.enum(["tool", "key_read", "exec"]).describe("Type of policy check"),
+      toolName: z.string().optional().describe("Tool name to check (for action=tool)"),
+      key: z.string().optional().describe("Secret key to check (for action=key_read)"),
+      command: z.string().optional().describe("Command to check (for action=exec)"),
+      projectPath: projectPathSchema,
+    },
+    async (params) => {
+      if (params.action === "tool" && params.toolName) {
+        const d = checkToolPolicy(params.toolName, params.projectPath);
+        return text(JSON.stringify(d, null, 2));
+      }
+      if (params.action === "key_read" && params.key) {
+        const d = checkKeyReadPolicy(params.key, undefined, params.projectPath);
+        return text(JSON.stringify(d, null, 2));
+      }
+      if (params.action === "exec" && params.command) {
+        const d = checkExecPolicy(params.command, params.projectPath);
+        return text(JSON.stringify(d, null, 2));
+      }
+      return text("Missing required parameter for the selected action type", true);
+    },
+  );
+
+  server.tool(
+    "get_policy_summary",
+    "Get a summary of the project's governance policy configuration.",
+    {
+      projectPath: projectPathSchema,
+    },
+    async (params) => {
+      const summary = getPolicySummary(params.projectPath);
+      return text(JSON.stringify(summary, null, 2));
     },
   );
 

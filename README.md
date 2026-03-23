@@ -104,15 +104,22 @@ qring health
 
 ### Observer Effect — Audit Everything
 
-Every secret read, write, and delete is logged. Access patterns are tracked for anomaly detection.
+Every secret read, write, and delete is logged with a tamper-evident hash chain. Access patterns are tracked for anomaly detection.
 
 ```bash
 # View audit log
 qring audit
 qring audit --key OPENAI_KEY --limit 50
 
-# Detect anomalies (burst access, unusual hours)
+# Detect anomalies (burst access, unusual hours, chain tampering)
 qring audit --anomalies
+
+# Verify audit chain integrity
+qring audit:verify
+
+# Export audit log
+qring audit:export --format json --since 2026-03-01
+qring audit:export --format csv --output audit-report.csv
 ```
 
 ### Quantum Noise — Secret Generation
@@ -325,6 +332,266 @@ qring set STRIPE_KEY "sk-..." --rotation-format api-key --rotation-prefix "sk-"
 qring set DB_PASS "..." --rotation-format password
 ```
 
+### Secure Execution & Auto-Redaction
+
+Run commands with secrets securely injected into the environment. All known secret values are automatically redacted from stdout and stderr to prevent leaking into terminal logs or agent transcripts. Exec profiles restrict which commands may be run.
+
+```bash
+# Execute a deployment script with secrets injected
+qring exec -- npm run deploy
+
+# Inject only specific tags
+qring exec --tags backend -- node server.js
+
+# Run with a restricted profile (blocks curl/wget/ssh, 30s timeout)
+qring exec --profile restricted -- npm test
+```
+
+### Codebase Secret Scanner
+
+Migrating a legacy codebase? Quickly scan directories for hardcoded credentials using regex heuristics and Shannon entropy analysis.
+
+```bash
+# Scan current directory
+qring scan .
+```
+
+Output:
+```
+  ✗ src/db/connection.js:12
+    Key:     DB_PASSWORD
+    Entropy: 4.23
+    Context: const DB_PASSWORD = "..."
+```
+
+### Composite / Templated Secrets
+
+Store complex connection strings that dynamically resolve other secrets. If `DB_PASS` rotates, `DB_URL` is automatically correct without manual updates.
+
+```bash
+qring set DB_USER "admin"
+qring set DB_PASS "supersecret"
+qring set DB_URL "postgres://{{DB_USER}}:{{DB_PASS}}@localhost/mydb"
+
+# Resolves embedded templates automatically
+qring get DB_URL 
+# Output: postgres://admin:supersecret@localhost/mydb
+```
+
+### User Approvals (Zero-Trust Agent)
+
+Protect sensitive production secrets from being read autonomously by the MCP server without explicit user approval. Each approval token is HMAC-verified, scoped, reasoned, and time-limited.
+
+```bash
+# Mark a secret as requiring approval
+qring set PROD_DB_URL "..." --requires-approval
+
+# Temporarily grant MCP access for 1 hour with a reason
+qring approve PROD_DB_URL --for 3600 --reason "deploying v2.0"
+
+# List all approvals with verification status
+qring approvals
+
+# Revoke an approval
+qring approve PROD_DB_URL --revoke
+```
+
+### Just-In-Time (JIT) Provisioning
+
+Instead of storing static credentials, configure `q-ring` to dynamically generate short-lived tokens on the fly when requested (e.g. AWS STS, generic HTTP endpoints).
+
+```bash
+# Store the STS role configuration
+qring set AWS_TEMP_KEYS '{"roleArn":"arn:aws:iam::123:role/AgentRole", "durationSeconds":3600}' --jit-provider aws-sts
+
+# Resolving the secret automatically assumes the role and caches the temporary token
+qring get AWS_TEMP_KEYS
+```
+
+### Project Context for AI Agents
+
+A safe, redacted overview of the project's secrets, configuration, and state. Designed to be fed into an AI agent's system prompt without ever exposing secret values.
+
+```bash
+# Human-readable summary
+qring context
+
+# JSON output (for MCP / programmatic use)
+qring context --json
+```
+
+### Secret-Aware Linter
+
+Scan specific files for hardcoded secrets with optional auto-fix. When `--fix` is used, detected secrets are replaced with `process.env.KEY` references and stored in q-ring.
+
+```bash
+# Lint files for hardcoded secrets
+qring lint src/config.ts src/db.ts
+
+# Auto-fix: replace hardcoded values and store in q-ring
+qring lint src/config.ts --fix
+
+# Scan entire directory with auto-fix
+qring scan . --fix
+```
+
+### Agent Memory
+
+Encrypted, persistent key-value store that survives across AI agent sessions. Useful for remembering rotation history, project decisions, or context.
+
+```bash
+# Store a memory
+qring remember last_rotation "Rotated STRIPE_KEY on 2026-03-21"
+
+# Retrieve it
+qring recall last_rotation
+
+# List all memories
+qring recall
+
+# Forget
+qring forget last_rotation
+```
+
+### Pre-Commit Secret Scanning
+
+Install a git pre-commit hook that automatically blocks commits containing hardcoded secrets.
+
+```bash
+# Install the hook
+qring hook:install
+
+# Uninstall
+qring hook:uninstall
+```
+
+### Secret Analytics
+
+Analyze usage patterns and get optimization suggestions for your secrets.
+
+```bash
+qring analyze
+```
+
+Output includes most accessed secrets, unused/stale secrets, scope optimization suggestions, and rotation recommendations.
+
+### Service Setup Wizard
+
+Quickly set up a new service integration with secrets, manifest entries, and hooks in one command.
+
+```bash
+# Create secrets for a new Stripe integration
+qring wizard stripe --keys STRIPE_KEY,STRIPE_SECRET --provider stripe --tags payment
+
+# With a hook to restart the app on change
+qring wizard myservice --hook-exec "pm2 restart app"
+```
+
+### Governance Policy
+
+Define project-level governance rules in `.q-ring.json` to control which MCP tools can be used, which keys are accessible, and which commands can be executed. Policy is enforced at both the MCP server and keyring level.
+
+```bash
+# View the active policy
+qring policy
+
+# JSON output
+qring policy --json
+```
+
+Example policy in `.q-ring.json`:
+
+```json
+{
+  "policy": {
+    "mcp": {
+      "denyTools": ["delete_secret"],
+      "deniedKeys": ["PROD_DB_PASSWORD"],
+      "deniedTags": ["production"]
+    },
+    "exec": {
+      "denyCommands": ["curl", "wget", "ssh"],
+      "maxRuntimeSeconds": 30
+    },
+    "secrets": {
+      "requireApprovalForTags": ["production"],
+      "maxTtlSeconds": 86400
+    }
+  }
+}
+```
+
+### Exec Profiles
+
+Restrict command execution with named profiles that control allowed commands, network access, timeouts, and environment sanitization.
+
+```bash
+# Run with the "restricted" profile (blocks curl, wget, ssh; 30s timeout)
+qring exec --profile restricted -- npm test
+
+# Run with the "ci" profile (5min timeout, allows network)
+qring exec --profile ci -- npm run deploy
+
+# Default: unrestricted
+qring exec -- echo "hello"
+```
+
+**Built-in profiles:** `unrestricted`, `restricted` (no network tools, 30s limit), `ci` (5min limit, blocks destructive commands).
+
+### Tamper-Evident Audit
+
+Every audit event includes a SHA-256 hash of the previous event, creating a tamper-evident chain. Verify integrity and export logs in multiple formats.
+
+```bash
+# Verify the entire audit chain
+qring audit:verify
+
+# Export as JSON
+qring audit:export --format json --since 2026-03-01
+
+# Export as CSV
+qring audit:export --format csv --output audit-report.csv
+```
+
+### Team & Org Scopes
+
+Extend beyond `global` and `project` scopes with `team` and `org` scopes for shared secrets across groups. Resolution order: project → team → org → global (most specific wins).
+
+```bash
+# Store a secret in team scope
+qring set SHARED_API_KEY "sk-..." --team my-team
+
+# Store in org scope
+qring set ORG_LICENSE "lic-..." --org acme-corp
+
+# Resolution cascades: project > team > org > global
+qring get API_KEY --team my-team --org acme-corp
+```
+
+### Issuer-Native Rotation
+
+Attempt provider-native secret rotation (for providers that support it) or fall back to local generation.
+
+```bash
+# Rotate via the detected provider
+qring rotate STRIPE_KEY
+
+# Force a specific provider
+qring rotate API_KEY --provider openai
+```
+
+### CI Secret Validation
+
+Batch-validate all secrets against their providers in a CI-friendly mode. Returns a structured pass/fail report with exit code 1 on failure.
+
+```bash
+# Validate all secrets (CI mode)
+qring ci:validate
+
+# JSON output for pipeline parsing
+qring ci:validate --json
+```
+
 ### Agent Mode — Autonomous Monitoring
 
 A background daemon that continuously monitors secret health, detects anomalies, and optionally auto-rotates expired secrets.
@@ -359,7 +626,7 @@ qring status --no-open
 
 ## MCP Server
 
-q-ring includes a full MCP server with 31 tools for AI agent integration.
+q-ring includes a full MCP server with 44 tools for AI agent integration.
 
 ### Core Tools
 
@@ -416,14 +683,44 @@ q-ring includes a full MCP server with 31 tools for AI agent integration.
 | `list_hooks` | List all registered hooks with match criteria and status |
 | `remove_hook` | Remove a registered hook by ID |
 
+### Execution & Scanning Tools
+
+| Tool | Description |
+|------|-------------|
+| `exec_with_secrets` | Run a shell command securely with secrets injected, auto-redacted output, and exec profile enforcement |
+| `scan_codebase_for_secrets` | Scan a directory for hardcoded secrets using regex heuristics and entropy analysis |
+| `lint_files` | Lint specific files for hardcoded secrets with optional auto-fix |
+
+### AI Agent Tools
+
+| Tool | Description |
+|------|-------------|
+| `get_project_context` | Safe, redacted overview of project secrets, environment, manifest, and activity |
+| `agent_remember` | Store a key-value pair in encrypted agent memory (persists across sessions) |
+| `agent_recall` | Retrieve from agent memory, or list all stored keys |
+| `agent_forget` | Delete a key from agent memory |
+| `analyze_secrets` | Usage analytics: most accessed, stale, unused, and rotation recommendations |
+
 ### Observer & Health Tools
 
 | Tool | Description |
 |------|-------------|
 | `audit_log` | Query access history |
 | `detect_anomalies` | Scan for unusual access patterns |
+| `verify_audit_chain` | Verify tamper-evident hash chain integrity |
+| `export_audit` | Export audit events in jsonl, json, or csv format |
 | `health_check` | Full health report |
+| `status_dashboard` | Launch the quantum status dashboard via MCP |
 | `agent_scan` | Run autonomous agent scan |
+
+### Governance & Policy Tools
+
+| Tool | Description |
+|------|-------------|
+| `check_policy` | Check if an action (tool use, key read, exec) is allowed by project policy |
+| `get_policy_summary` | Get a summary of the project's governance policy configuration |
+| `rotate_secret` | Attempt issuer-native rotation via detected or specified provider |
+| `ci_validate_secrets` | CI-oriented batch validation of all secrets with structured pass/fail report |
 
 ### Cursor / Kiro Configuration
 
@@ -490,14 +787,22 @@ qring CLI ─────┐
                ├──▶ Core Engine ──▶ @napi-rs/keyring ──▶ OS Keyring
 MCP Server ────┘       │
                        ├── Envelope (quantum metadata)
-                       ├── Scope Resolver (global / project)
+                       ├── Scope Resolver (global / project / team / org)
                        ├── Collapse (env detection + branchMap globs)
-                       ├── Observer (audit log)
+                       ├── Observer (tamper-evident audit chain)
+                       ├── Policy (governance-as-code engine)
                        ├── Noise (secret generation)
                        ├── Entanglement (cross-secret linking)
-                       ├── Validate (provider-based liveness checks)
+                       ├── Validate (provider-based liveness + rotation)
                        ├── Hooks (shell/HTTP/signal callbacks)
                        ├── Import (.env file ingestion)
+                       ├── Exec (profile-restricted injection + redaction)
+                       ├── Scan (codebase entropy heuristics)
+                       ├── Provision (JIT ephemeral credentials)
+                       ├── Approval (HMAC-verified zero-trust tokens)
+                       ├── Context (safe redacted project view)
+                       ├── Linter (secret-aware code scanning)
+                       ├── Memory (encrypted agent persistence)
                        ├── Tunnel (ephemeral in-memory)
                        ├── Teleport (encrypted sharing)
                        ├── Agent (autonomous monitor + rotation)
@@ -523,6 +828,17 @@ Optional per-project configuration:
     "OPENAI_API_KEY": { "required": true, "description": "OpenAI API key", "format": "api-key", "prefix": "sk-", "provider": "openai" },
     "DATABASE_URL": { "required": true, "description": "Postgres connection string", "validationUrl": "https://api.example.com/health" },
     "SENTRY_DSN": { "required": false, "description": "Sentry error tracking" }
+  },
+  "policy": {
+    "mcp": {
+      "denyTools": ["delete_secret"],
+      "deniedKeys": ["PROD_DB_PASSWORD"],
+      "deniedTags": ["production"]
+    },
+    "exec": {
+      "denyCommands": ["curl", "wget"],
+      "maxRuntimeSeconds": 60
+    }
   }
 }
 ```
@@ -531,6 +847,7 @@ Optional per-project configuration:
 - **`secrets`** declares the project's required secrets — use `qring check` to validate, `qring env:generate` to produce a `.env` file
 - **`provider`** associates a liveness validation provider with a secret (e.g., `"openai"`, `"stripe"`, `"github"`) — use `qring validate` to test
 - **`validationUrl`** configures the generic HTTP provider's endpoint for custom validation
+- **`policy`** defines governance rules for MCP tool gating, key access restrictions, exec allowlists, and secret lifecycle requirements
 
 ## 📜 License
 

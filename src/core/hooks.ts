@@ -42,7 +42,7 @@ export interface HookPayload {
   key: string;
   scope: string;
   timestamp: string;
-  source: "cli" | "mcp" | "agent" | "api";
+  source: "cli" | "mcp" | "agent" | "api" | "hook" | "ci";
 }
 
 export interface HookResult {

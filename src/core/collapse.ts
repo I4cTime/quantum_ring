@@ -61,6 +61,8 @@ export interface ProjectConfig {
   branchMap?: Record<string, Environment>;
   /** Secrets manifest — declares required/expected secrets for this project */
   secrets?: Record<string, ManifestEntry>;
+  /** Governance policy for MCP, exec, and secret lifecycle */
+  policy?: import("./policy.js").PolicyConfig;
 }
 
 export function readProjectConfig(projectPath?: string): ProjectConfig | null {

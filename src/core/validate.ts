@@ -254,3 +254,80 @@ export async function validateSecret(
 
   return provider.validate(value);
 }
+
+// ─── Rotation Support ───
+
+export interface RotationResult {
+  rotated: boolean;
+  provider: string;
+  message: string;
+  newValue?: string;
+}
+
+export interface RotatableProvider extends Provider {
+  rotate?(currentValue: string): Promise<RotationResult>;
+  supportsRotation: boolean;
+}
+
+/**
+ * Attempt provider-native rotation of a secret.
+ * Falls back to local generation if the provider does not support native rotation.
+ */
+export async function rotateWithProvider(
+  value: string,
+  providerName?: string,
+): Promise<RotationResult> {
+  const provider = providerName
+    ? registry.get(providerName)
+    : registry.detectProvider(value);
+
+  if (!provider) {
+    return { rotated: false, provider: "none", message: "No provider detected for rotation" };
+  }
+
+  const rotatable = provider as RotatableProvider;
+  if (rotatable.supportsRotation && rotatable.rotate) {
+    return rotatable.rotate(value);
+  }
+
+  return {
+    rotated: false,
+    provider: provider.name,
+    message: `Provider "${provider.name}" does not support native rotation — use local generation instead`,
+  };
+}
+
+// ─── CI Scan ───
+
+export interface CiScanResult {
+  key: string;
+  validation: ValidationResult;
+  requiresRotation: boolean;
+}
+
+/**
+ * CI-oriented batch validation: validates all secrets and returns
+ * a structured report suitable for CI pipeline gating.
+ */
+export async function ciValidateBatch(
+  secrets: { key: string; value: string; provider?: string; validationUrl?: string }[],
+): Promise<{ results: CiScanResult[]; allValid: boolean; failCount: number }> {
+  const results: CiScanResult[] = [];
+
+  for (const s of secrets) {
+    const validation = await validateSecret(s.value, {
+      provider: s.provider,
+      validationUrl: s.validationUrl,
+    });
+
+    results.push({
+      key: s.key,
+      validation,
+      requiresRotation: validation.status === "invalid",
+    });
+  }
+
+  const failCount = results.filter((r) => !r.validation.valid).length;
+
+  return { results, allValid: failCount === 0, failCount };
+}
