@@ -17,6 +17,16 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.9.1",
+    date: "2026-03-24",
+    highlights: [
+      { type: "changed", text: "CHANGELOG — added missing Tier 4–6 feature entries to the v0.9.0 record" },
+      { type: "changed", text: "Web landing site — added 11 feature cards, 3 MCP tool groups (15 tools), 8 architecture modules; updated counts" },
+      { type: "changed", text: "Web changelog — synced with CHANGELOG.md" },
+      { type: "changed", text: "Stats — removed Tiers and Platforms cards; kept MCP Tools and Quantum Features" },
+    ],
+  },
+  {
     version: "0.9.0",
     date: "2026-03-22",
     highlights: [
