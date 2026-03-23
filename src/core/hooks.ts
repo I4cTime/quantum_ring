@@ -174,6 +174,12 @@ function executeShell(command: string, payload: HookPayload): Promise<HookResult
 }
 
 function isPrivateIP(ip: string): boolean {
+  // Normalize IPv4-mapped IPv6 addresses (e.g. ::ffff:127.0.0.1)
+  const octet = "(?:25[0-5]|2[0-4]\\d|1?\\d{1,2})";
+  const ipv4Re = new RegExp(`^::ffff:(${octet}\\.${octet}\\.${octet}\\.${octet})$`, "i");
+  const ipv4Mapped = ip.match(ipv4Re);
+  if (ipv4Mapped) return isPrivateIP(ipv4Mapped[1]);
+
   // IPv4 private/loopback/link-local
   if (/^127\./.test(ip)) return true;
   if (/^10\./.test(ip)) return true;
@@ -195,13 +201,17 @@ async function checkSSRF(url: string): Promise<string | null> {
     const parsed = new URL(url);
     const hostname = parsed.hostname.replace(/^\[|\]$/g, "");
 
+    // If the hostname is already an IP literal, check it directly.
     if (isPrivateIP(hostname)) {
       return `Blocked: hook URL resolves to private address (${hostname}). Set Q_RING_ALLOW_PRIVATE_HOOKS=1 to override.`;
     }
 
-    const result = await lookup(hostname);
-    if (isPrivateIP(result.address)) {
-      return `Blocked: hook URL "${hostname}" resolves to private address ${result.address}. Set Q_RING_ALLOW_PRIVATE_HOOKS=1 to override.`;
+    // Resolve all addresses (A and AAAA) and block if any are private.
+    const results = await lookup(hostname, { all: true });
+    for (const { address } of results) {
+      if (isPrivateIP(address)) {
+        return `Blocked: hook URL "${hostname}" resolves to private address ${address}. Set Q_RING_ALLOW_PRIVATE_HOOKS=1 to override.`;
+      }
     }
   } catch {
     // DNS failure will surface as a request error downstream

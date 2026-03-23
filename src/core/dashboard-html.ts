@@ -177,7 +177,7 @@ body{min-height:100vh;overflow-x:hidden;position:relative}
 <div class="container">
   <div class="header">
     <h1>
-      <span class="q-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#neon-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
+      <span class="q-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#neon-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
       <span class="brand">q-ring</span>
       <span class="sub">quantum status</span>
     </h1>
