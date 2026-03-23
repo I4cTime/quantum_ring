@@ -132,8 +132,13 @@ export function startDashboardServer(
     const snapshot = collectSnapshot();
     const data = `data: ${JSON.stringify(snapshot)}\n\n`;
     for (const res of clients) {
+      if (res.writableEnded || res.destroyed) {
+        clients.delete(res);
+        continue;
+      }
       try {
-        res.write(data);
+        const ok = res.write(data);
+        if (!ok) clients.delete(res);
       } catch {
         clients.delete(res);
       }
@@ -141,17 +146,15 @@ export function startDashboardServer(
   }
 
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
-    const url = req.url ?? "/";
+    const { pathname } = new URL(req.url ?? "/", "http://127.0.0.1");
 
-    if (url === "/events") {
+    if (pathname === "/events") {
       res.writeHead(200, {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
-        "Access-Control-Allow-Origin": "*",
       });
 
-      // Send initial snapshot immediately
       const snapshot = collectSnapshot();
       res.write(`data: ${JSON.stringify(snapshot)}\n\n`);
 
@@ -160,17 +163,15 @@ export function startDashboardServer(
       return;
     }
 
-    if (url === "/api/status") {
+    if (pathname === "/api/status") {
       const snapshot = collectSnapshot();
       res.writeHead(200, {
         "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
       });
       res.end(JSON.stringify(snapshot, null, 2));
       return;
     }
 
-    // Serve the dashboard HTML
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end(html);
   });

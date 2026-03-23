@@ -1,0 +1,95 @@
+/**
+ * Shared HTTP request helper with timeout and response body cap.
+ * Used by validation providers and webhook hooks.
+ */
+
+import { request as httpsRequest } from "node:https";
+import { request as httpRequest } from "node:http";
+
+export interface HttpRequestOptions {
+  url: string;
+  method?: "GET" | "POST";
+  headers?: Record<string, string>;
+  body?: string;
+  timeoutMs?: number;
+  maxResponseBytes?: number;
+}
+
+export interface HttpResponse {
+  statusCode: number;
+  body: string;
+  truncated: boolean;
+}
+
+const DEFAULT_TIMEOUT_MS = 10_000;
+const DEFAULT_MAX_RESPONSE_BYTES = 65_536; // 64 KiB
+
+export function httpRequest_(
+  opts: HttpRequestOptions,
+): Promise<HttpResponse> {
+  const {
+    url,
+    method = "GET",
+    headers = {},
+    body,
+    timeoutMs = DEFAULT_TIMEOUT_MS,
+    maxResponseBytes = DEFAULT_MAX_RESPONSE_BYTES,
+  } = opts;
+
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const reqFn = parsed.protocol === "https:" ? httpsRequest : httpRequest;
+
+    const reqHeaders: Record<string, string | number> = { ...headers };
+    if (body && !reqHeaders["Content-Length"]) {
+      reqHeaders["Content-Length"] = Buffer.byteLength(body);
+    }
+
+    const req = reqFn(
+      url,
+      { method, headers: reqHeaders, timeout: timeoutMs },
+      (res) => {
+        const chunks: Buffer[] = [];
+        let totalBytes = 0;
+        let truncated = false;
+
+        res.on("data", (chunk: Buffer) => {
+          totalBytes += chunk.length;
+          if (totalBytes > maxResponseBytes) {
+            truncated = true;
+            res.destroy();
+            return;
+          }
+          chunks.push(chunk);
+        });
+
+        res.on("end", () => {
+          resolve({
+            statusCode: res.statusCode ?? 0,
+            body: Buffer.concat(chunks).toString("utf8"),
+            truncated,
+          });
+        });
+
+        res.on("close", () => {
+          if (truncated) {
+            resolve({
+              statusCode: res.statusCode ?? 0,
+              body: Buffer.concat(chunks).toString("utf8"),
+              truncated: true,
+            });
+          }
+        });
+      },
+    );
+
+    req.on("error", (err) => reject(new Error(`Network error: ${err.message}`)));
+    req.on("timeout", () => {
+      req.destroy();
+      reject(new Error("Request timed out"));
+    });
+
+    if (body) req.write(body);
+    req.end();
+  });
+}

@@ -13,9 +13,6 @@ export function getDashboardHtml(): string {
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>q-ring — quantum status</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"/>
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -41,8 +38,8 @@ export function getDashboardHtml(): string {
   --violet:#a855f7;
   --pink:#ff0055;
 
-  --font-display:'Outfit',sans-serif;
-  --font-mono:'JetBrains Mono',monospace;
+  --font-display:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --font-mono:'SF Mono','Cascadia Code','Fira Code',Consolas,'Liberation Mono',monospace;
 
   --radius:12px;
   --radius-sm:8px;
@@ -180,7 +177,7 @@ body{min-height:100vh;overflow-x:hidden;position:relative}
 <div class="container">
   <div class="header">
     <h1>
-      <span class="q-icon"><img src="https://i4ctime.github.io/quantum_ring/assets/icon.png" alt="q-ring" width="28" height="28" style="display:block;border-radius:4px"/></span>
+      <span class="q-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="url(#neon-grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span>
       <span class="brand">q-ring</span>
       <span class="sub">quantum status</span>
     </h1>
