@@ -5,8 +5,7 @@
  * until they expire.
  */
 
-import { request as httpsRequest } from "node:https";
-import { execSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 
 export interface ProvisionResult {
   value: string;
@@ -54,10 +53,14 @@ const awsStsProvider: JitProvider = {
 
     if (!roleArn) throw new Error("aws-sts requires roleArn in config");
 
-    const cmd = `aws sts assume-role --role-arn "${roleArn}" --role-session-name "${sessionName}" --duration-seconds ${duration} --output json`;
-    
     try {
-      const output = execSync(cmd, { encoding: "utf8" });
+      const output = execFileSync("aws", [
+        "sts", "assume-role",
+        "--role-arn", roleArn,
+        "--role-session-name", sessionName,
+        "--duration-seconds", String(duration),
+        "--output", "json",
+      ], { encoding: "utf8" });
       const parsed = JSON.parse(output);
       const creds = parsed.Credentials;
       
@@ -79,7 +82,7 @@ const awsStsProvider: JitProvider = {
 
 const httpProvider: JitProvider = {
   name: "http",
-  description: "Generic HTTP token endpoint (POST) using curl",
+  description: "Generic HTTP token endpoint using Node.js http/https",
   provision(configRaw: string): ProvisionResult {
     let config: any;
     try {
@@ -95,20 +98,46 @@ const httpProvider: JitProvider = {
 
     if (!url) throw new Error("http provider requires url in config");
 
-    // Build curl command securely
-    let cmd = `curl -s -X ${method} "${url}"`;
-    if (config.headers) {
-      for (const [k, v] of Object.entries(config.headers)) {
-        cmd += ` -H "${k}: ${v}"`;
-      }
-    }
+    const headers: Record<string, string> = {
+      "User-Agent": "q-ring-jit/1.0",
+      ...(config.headers ?? {}),
+    };
+    let bodyStr: string | undefined;
     if (config.body) {
-      cmd += ` -H "Content-Type: application/json" -d '${JSON.stringify(config.body).replace(/'/g, "'\\''")}'`;
+      headers["Content-Type"] = "application/json";
+      bodyStr = JSON.stringify(config.body);
     }
 
+    // Pass config via environment variable to avoid code interpolation
+    const scriptConfig = JSON.stringify({ url, method, headers, bodyStr });
+
+    // Static script that reads config from env var
+    const script = `
+const cfg = JSON.parse(process.env.__QRING_HTTP_CFG);
+const parsedUrl = new URL(cfg.url);
+const http = require(parsedUrl.protocol === "https:" ? "node:https" : "node:http");
+const req = http.request(cfg.url, { method: cfg.method, headers: cfg.headers, timeout: 30000 }, (res) => {
+  let body = "";
+  res.on("data", (chunk) => body += chunk);
+  res.on("end", () => process.stdout.write(body));
+});
+req.on("error", (e) => { process.stderr.write(e.message); process.exit(1); });
+if (cfg.bodyStr) req.write(cfg.bodyStr);
+req.end();
+`;
+
     try {
-      const output = execSync(cmd, { encoding: "utf8" });
-      const parsed = JSON.parse(output);
+      const result = spawnSync("node", ["-e", script], {
+        encoding: "utf8",
+        timeout: 35000,
+        env: { ...process.env, __QRING_HTTP_CFG: scriptConfig },
+      });
+
+      if (result.status !== 0) {
+        throw new Error(result.stderr || "HTTP request failed");
+      }
+
+      const parsed = JSON.parse(result.stdout);
       let val = parsed;
       for (const key of valuePath.split(".")) {
         val = val[key];

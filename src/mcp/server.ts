@@ -88,7 +88,7 @@ export function createMcpServer(): McpServer {
   const scopeSchema = z
     .enum(["global", "project", "team", "org"])
     .optional()
-    .describe("Scope: global or project");
+    .describe("Scope: global, project, team, or org");
   const projectPathSchema = z
     .string()
     .optional()
@@ -108,6 +108,8 @@ export function createMcpServer(): McpServer {
       scope: scopeSchema,
       projectPath: projectPathSchema,
       env: envSchema,
+      teamId: teamIdSchema,
+      orgId: orgIdSchema,
     },
     async (params) => {
       const toolBlock = enforceToolPolicy("get_secret", params.projectPath);
@@ -138,8 +140,13 @@ export function createMcpServer(): McpServer {
       expired: z.boolean().optional().describe("Show only expired secrets"),
       stale: z.boolean().optional().describe("Show only stale secrets (75%+ decay)"),
       filter: z.string().optional().describe("Glob pattern on key name (e.g., 'API_*')"),
+      teamId: teamIdSchema,
+      orgId: orgIdSchema,
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("list_secrets", params.projectPath);
+      if (toolBlock) return toolBlock;
+
       let entries = listSecrets(opts(params));
 
       if (params.tag) {
@@ -221,8 +228,13 @@ export function createMcpServer(): McpServer {
         .string()
         .optional()
         .describe("Prefix for auto-rotation (e.g. 'sk-')"),
+      teamId: teamIdSchema,
+      orgId: orgIdSchema,
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("set_secret", params.projectPath);
+      if (toolBlock) return toolBlock;
+
       const o = opts(params);
 
       if (params.env) {
@@ -268,8 +280,13 @@ export function createMcpServer(): McpServer {
       key: z.string().describe("The secret key name"),
       scope: scopeSchema,
       projectPath: projectPathSchema,
+      teamId: teamIdSchema,
+      orgId: orgIdSchema,
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("delete_secret", params.projectPath);
+      if (toolBlock) return toolBlock;
+
       const deleted = deleteSecret(params.key, opts(params));
       return text(
         deleted ? `Deleted "${params.key}"` : `Secret "${params.key}" not found`,
@@ -285,8 +302,13 @@ export function createMcpServer(): McpServer {
       key: z.string().describe("The secret key name"),
       scope: scopeSchema,
       projectPath: projectPathSchema,
+      teamId: teamIdSchema,
+      orgId: orgIdSchema,
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("has_secret", params.projectPath);
+      if (toolBlock) return toolBlock;
+
       return text(hasSecret(params.key, opts(params)) ? "true" : "false");
     },
   );
@@ -311,8 +333,13 @@ export function createMcpServer(): McpServer {
       scope: scopeSchema,
       projectPath: projectPathSchema,
       env: envSchema,
+      teamId: teamIdSchema,
+      orgId: orgIdSchema,
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("export_secrets", params.projectPath);
+      if (toolBlock) return toolBlock;
+
       const output = exportSecrets({
         ...opts(params),
         format: params.format as "env" | "json",
@@ -344,6 +371,9 @@ export function createMcpServer(): McpServer {
         .describe("Preview what would be imported without saving"),
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("import_dotenv", params.projectPath);
+      if (toolBlock) return toolBlock;
+
       const result = importDotenv(params.content, {
         scope: params.scope as "global" | "project",
         projectPath: params.projectPath ?? process.cwd(),
@@ -374,6 +404,9 @@ export function createMcpServer(): McpServer {
       projectPath: projectPathSchema,
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("check_project", params.projectPath);
+      if (toolBlock) return toolBlock;
+
       const projectPath = params.projectPath ?? process.cwd();
       const config = readProjectConfig(projectPath);
 
@@ -433,6 +466,9 @@ export function createMcpServer(): McpServer {
       env: envSchema,
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("env_generate", params.projectPath);
+      if (toolBlock) return toolBlock;
+
       const projectPath = params.projectPath ?? process.cwd();
       const config = readProjectConfig(projectPath);
 
@@ -490,8 +526,13 @@ export function createMcpServer(): McpServer {
       key: z.string().describe("The secret key name"),
       scope: scopeSchema,
       projectPath: projectPathSchema,
+      teamId: teamIdSchema,
+      orgId: orgIdSchema,
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("inspect_secret", params.projectPath);
+      if (toolBlock) return toolBlock;
+
       const result = getEnvelope(params.key, opts(params));
       if (!result) return text(`Secret "${params.key}" not found`, true);
 
@@ -540,6 +581,9 @@ export function createMcpServer(): McpServer {
       projectPath: projectPathSchema,
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("detect_environment", params.projectPath);
+      if (toolBlock) return toolBlock;
+
       const result = collapseEnvironment({
         projectPath: params.projectPath ?? process.cwd(),
       });
@@ -568,8 +612,13 @@ export function createMcpServer(): McpServer {
       saveAs: z.string().optional().describe("If provided, save the generated secret with this key name"),
       scope: scopeSchema.default("global"),
       projectPath: projectPathSchema,
+      teamId: teamIdSchema,
+      orgId: orgIdSchema,
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("generate_secret", params.projectPath);
+      if (toolBlock) return toolBlock;
+
       const secret = generateSecret({
         format: params.format as NoiseFormat,
         length: params.length,
@@ -603,6 +652,9 @@ export function createMcpServer(): McpServer {
       targetProjectPath: z.string().optional(),
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("entangle_secrets", params.sourceProjectPath);
+      if (toolBlock) return toolBlock;
+
       entangleSecrets(
         params.sourceKey,
         {
@@ -634,6 +686,9 @@ export function createMcpServer(): McpServer {
       targetProjectPath: z.string().optional(),
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("disentangle_secrets", params.sourceProjectPath);
+      if (toolBlock) return toolBlock;
+
       disentangleSecrets(
         params.sourceKey,
         {
@@ -664,6 +719,9 @@ export function createMcpServer(): McpServer {
       maxReads: z.number().optional().describe("Self-destruct after N reads"),
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("tunnel_create");
+      if (toolBlock) return toolBlock;
+
       const id = tunnelCreate(params.value, {
         ttlSeconds: params.ttlSeconds,
         maxReads: params.maxReads,
@@ -679,6 +737,9 @@ export function createMcpServer(): McpServer {
       id: z.string().describe("Tunnel ID"),
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("tunnel_read");
+      if (toolBlock) return toolBlock;
+
       const value = tunnelRead(params.id);
       if (value === null) {
         return text(`Tunnel "${params.id}" not found or expired`, true);
@@ -692,6 +753,9 @@ export function createMcpServer(): McpServer {
     "List active tunneled secrets (IDs and metadata only, never values).",
     {},
     async () => {
+      const toolBlock = enforceToolPolicy("tunnel_list");
+      if (toolBlock) return toolBlock;
+
       const tunnels = tunnelList();
       if (tunnels.length === 0) return text("No active tunnels");
 
@@ -717,6 +781,9 @@ export function createMcpServer(): McpServer {
       id: z.string().describe("Tunnel ID"),
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("tunnel_destroy");
+      if (toolBlock) return toolBlock;
+
       const destroyed = tunnelDestroy(params.id);
       return text(
         destroyed ? `Destroyed ${params.id}` : `Tunnel "${params.id}" not found`,
@@ -738,8 +805,13 @@ export function createMcpServer(): McpServer {
       passphrase: z.string().describe("Encryption passphrase"),
       scope: scopeSchema,
       projectPath: projectPathSchema,
+      teamId: teamIdSchema,
+      orgId: orgIdSchema,
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("teleport_pack", params.projectPath);
+      if (toolBlock) return toolBlock;
+
       const o = opts(params);
       const entries = listSecrets(o);
 
@@ -767,6 +839,8 @@ export function createMcpServer(): McpServer {
       passphrase: z.string().describe("Decryption passphrase"),
       scope: scopeSchema.default("global"),
       projectPath: projectPathSchema,
+      teamId: teamIdSchema,
+      orgId: orgIdSchema,
       dryRun: z
         .boolean()
         .optional()
@@ -774,6 +848,9 @@ export function createMcpServer(): McpServer {
         .describe("Preview without importing"),
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("teleport_unpack", params.projectPath);
+      if (toolBlock) return toolBlock;
+
       try {
         const payload = teleportUnpack(params.bundle, params.passphrase);
 
@@ -810,6 +887,9 @@ export function createMcpServer(): McpServer {
       limit: z.number().optional().default(20).describe("Max events to return"),
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("audit_log");
+      if (toolBlock) return toolBlock;
+
       const events = queryAudit({
         key: params.key,
         action: params.action,
@@ -838,6 +918,9 @@ export function createMcpServer(): McpServer {
       key: z.string().optional().describe("Check anomalies for a specific key"),
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("detect_anomalies");
+      if (toolBlock) return toolBlock;
+
       const anomalies = detectAnomalies(params.key);
       if (anomalies.length === 0) return text("No anomalies detected");
 
@@ -856,8 +939,13 @@ export function createMcpServer(): McpServer {
     {
       scope: scopeSchema,
       projectPath: projectPathSchema,
+      teamId: teamIdSchema,
+      orgId: orgIdSchema,
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("health_check", params.projectPath);
+      if (toolBlock) return toolBlock;
+
       const entries = listSecrets(opts(params));
       const anomalies = detectAnomalies();
 
@@ -916,8 +1004,13 @@ export function createMcpServer(): McpServer {
       provider: z.string().optional().describe("Force a specific provider (openai, stripe, github, aws, http)"),
       scope: scopeSchema,
       projectPath: projectPathSchema,
+      teamId: teamIdSchema,
+      orgId: orgIdSchema,
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("validate_secret", params.projectPath);
+      if (toolBlock) return toolBlock;
+
       const value = getSecret(params.key, opts(params));
       if (value === null) return text(`Secret "${params.key}" not found`, true);
 
@@ -934,6 +1027,9 @@ export function createMcpServer(): McpServer {
     "List all available validation providers for secret liveness testing.",
     {},
     async () => {
+      const toolBlock = enforceToolPolicy("list_providers");
+      if (toolBlock) return toolBlock;
+
       const providers = providerRegistry.listProviders().map((p) => ({
         name: p.name,
         description: p.description,
@@ -962,6 +1058,9 @@ export function createMcpServer(): McpServer {
       description: z.string().optional().describe("Human-readable description"),
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("register_hook");
+      if (toolBlock) return toolBlock;
+
       if (!params.key && !params.keyPattern && !params.tag) {
         return text("At least one match criterion required: key, keyPattern, or tag", true);
       }
@@ -991,6 +1090,9 @@ export function createMcpServer(): McpServer {
     "List all registered secret change hooks with their match criteria, type, and status.",
     {},
     async () => {
+      const toolBlock = enforceToolPolicy("list_hooks");
+      if (toolBlock) return toolBlock;
+
       const hooks = listAllHooks();
       if (hooks.length === 0) return text("No hooks registered");
       return text(JSON.stringify(hooks, null, 2));
@@ -1004,6 +1106,9 @@ export function createMcpServer(): McpServer {
       id: z.string().describe("Hook ID to remove"),
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("remove_hook");
+      if (toolBlock) return toolBlock;
+
       const removed = removeHook(params.id);
       return text(
         removed ? `Removed hook ${params.id}` : `Hook "${params.id}" not found`,
@@ -1025,6 +1130,8 @@ export function createMcpServer(): McpServer {
       profile: z.enum(["unrestricted", "restricted", "ci"]).optional().default("restricted").describe("Exec profile: unrestricted, restricted, or ci"),
       scope: scopeSchema,
       projectPath: projectPathSchema,
+      teamId: teamIdSchema,
+      orgId: orgIdSchema,
     },
     async (params) => {
       const toolBlock = enforceToolPolicy("exec_with_secrets", params.projectPath);
@@ -1069,6 +1176,9 @@ export function createMcpServer(): McpServer {
       dirPath: z.string().describe("Absolute or relative path to the directory to scan"),
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("scan_codebase_for_secrets");
+      if (toolBlock) return toolBlock;
+
       try {
         const results = scanCodebase(params.dirPath);
         if (results.length === 0) {
@@ -1090,8 +1200,13 @@ export function createMcpServer(): McpServer {
     {
       scope: scopeSchema,
       projectPath: projectPathSchema,
+      teamId: teamIdSchema,
+      orgId: orgIdSchema,
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("get_project_context", params.projectPath);
+      if (toolBlock) return toolBlock;
+
       const context = getProjectContext(opts(params));
       return text(JSON.stringify(context, null, 2));
     },
@@ -1105,6 +1220,9 @@ export function createMcpServer(): McpServer {
       value: z.string().describe("Value to store"),
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("agent_remember");
+      if (toolBlock) return toolBlock;
+
       remember(params.key, params.value);
       return text(`Remembered "${params.key}"`);
     },
@@ -1117,6 +1235,9 @@ export function createMcpServer(): McpServer {
       key: z.string().optional().describe("Memory key to recall (omit to list all)"),
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("agent_recall");
+      if (toolBlock) return toolBlock;
+
       if (!params.key) {
         const entries = listMemory();
         if (entries.length === 0) return text("Agent memory is empty");
@@ -1135,6 +1256,9 @@ export function createMcpServer(): McpServer {
       key: z.string().describe("Memory key to forget"),
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("agent_forget");
+      if (toolBlock) return toolBlock;
+
       const removed = forget(params.key);
       return text(removed ? `Forgot "${params.key}"` : `No memory found for "${params.key}"`, !removed);
     },
@@ -1148,8 +1272,13 @@ export function createMcpServer(): McpServer {
       fix: z.boolean().optional().default(false).describe("Auto-replace and store secrets"),
       scope: scopeSchema,
       projectPath: projectPathSchema,
+      teamId: teamIdSchema,
+      orgId: orgIdSchema,
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("lint_files", params.projectPath);
+      if (toolBlock) return toolBlock;
+
       try {
         const results = lintFiles(params.files, {
           fix: params.fix,
@@ -1172,8 +1301,13 @@ export function createMcpServer(): McpServer {
     {
       scope: scopeSchema,
       projectPath: projectPathSchema,
+      teamId: teamIdSchema,
+      orgId: orgIdSchema,
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("analyze_secrets", params.projectPath);
+      if (toolBlock) return toolBlock;
+
       const o = opts(params);
       const entries = listSecrets({ ...o, silent: true });
       const audit = queryAudit({ limit: 500 });
@@ -1212,6 +1346,9 @@ export function createMcpServer(): McpServer {
       port: z.number().optional().default(9876).describe("Port to serve on"),
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("status_dashboard");
+      if (toolBlock) return toolBlock;
+
       if (dashboardInstance) {
         return text(`Dashboard already running at http://127.0.0.1:${dashboardInstance.port}`);
       }
@@ -1240,6 +1377,9 @@ export function createMcpServer(): McpServer {
         .describe("Project paths to monitor"),
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("agent_scan");
+      if (toolBlock) return toolBlock;
+
       const report = runHealthScan({
         autoRotate: params.autoRotate,
         projectPaths: params.projectPaths ?? [process.cwd()],
@@ -1255,6 +1395,9 @@ export function createMcpServer(): McpServer {
     "Verify the tamper-evident hash chain of the audit log. Returns integrity status and the first break point if tampered.",
     {},
     async () => {
+      const toolBlock = enforceToolPolicy("verify_audit_chain");
+      if (toolBlock) return toolBlock;
+
       const result = verifyAuditChain();
       return text(JSON.stringify(result, null, 2));
     },
@@ -1269,6 +1412,9 @@ export function createMcpServer(): McpServer {
       format: z.enum(["jsonl", "json", "csv"]).optional().default("jsonl").describe("Output format"),
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("export_audit");
+      if (toolBlock) return toolBlock;
+
       const output = exportAudit({
         since: params.since,
         until: params.until,
@@ -1288,6 +1434,8 @@ export function createMcpServer(): McpServer {
       provider: z.string().optional().describe("Force a specific provider"),
       scope: scopeSchema,
       projectPath: projectPathSchema,
+      teamId: teamIdSchema,
+      orgId: orgIdSchema,
     },
     async (params) => {
       const toolBlock = enforceToolPolicy("rotate_secret", params.projectPath);
@@ -1314,8 +1462,13 @@ export function createMcpServer(): McpServer {
     {
       scope: scopeSchema,
       projectPath: projectPathSchema,
+      teamId: teamIdSchema,
+      orgId: orgIdSchema,
     },
     async (params) => {
+      const toolBlock = enforceToolPolicy("ci_validate_secrets", params.projectPath);
+      if (toolBlock) return toolBlock;
+
       const entries = listSecrets(opts(params));
       const secrets = entries
         .map((e) => {

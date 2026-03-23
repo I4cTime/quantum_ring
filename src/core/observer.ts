@@ -10,7 +10,7 @@
  * modified or deleted, the chain breaks and `audit:verify` reports it.
  */
 
-import { existsSync, mkdirSync, appendFileSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, appendFileSync, readFileSync, writeFileSync, openSync, fstatSync, readSync, closeSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { createHash } from "node:crypto";
@@ -63,8 +63,21 @@ function getLastLineHash(): string | undefined {
   if (!existsSync(path)) return undefined;
 
   try {
-    const content = readFileSync(path, "utf8");
-    const lines = content.split("\n").filter((l) => l.trim());
+    const fd = openSync(path, "r");
+    const stat = fstatSync(fd);
+    if (stat.size === 0) {
+      closeSync(fd);
+      return undefined;
+    }
+
+    // Read up to the last 8KB to find the last line
+    const tailSize = Math.min(stat.size, 8192);
+    const buf = Buffer.alloc(tailSize);
+    readSync(fd, buf, 0, tailSize, stat.size - tailSize);
+    closeSync(fd);
+
+    const tail = buf.toString("utf8");
+    const lines = tail.split("\n").filter((l) => l.trim());
     if (lines.length === 0) return undefined;
 
     const lastLine = lines[lines.length - 1];

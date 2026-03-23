@@ -5,6 +5,7 @@
 
 import { request as httpsRequest } from "node:https";
 import { request as httpRequest } from "node:http";
+import { generateSecret, type NoiseFormat } from "./noise.js";
 
 export interface ValidationResult {
   valid: boolean;
@@ -290,10 +291,14 @@ export async function rotateWithProvider(
     return rotatable.rotate(value);
   }
 
+  // Fall back to local generation
+  const format: NoiseFormat = "api-key";
+  const newValue = generateSecret({ format, length: 48 });
   return {
-    rotated: false,
+    rotated: true,
     provider: provider.name,
-    message: `Provider "${provider.name}" does not support native rotation — use local generation instead`,
+    message: `Provider "${provider.name}" does not support native rotation — generated new value locally`,
+    newValue,
   };
 }
 

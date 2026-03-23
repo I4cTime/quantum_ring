@@ -205,10 +205,24 @@ export async function execCommand(opts: ExecOptions): Promise<ExecResult> {
   const maxRuntime = profile.maxRuntimeSeconds ?? getExecMaxRuntime(opts.projectPath);
 
   return new Promise((resolve, reject) => {
+    // Enforce network restrictions for profiles that disallow network access.
+    const networkTools = new Set([
+      "curl", "wget", "ping", "nc", "netcat", "ssh", "telnet", "ftp", "dig", "nslookup",
+    ]);
+
+    if (profile.allowNetwork === false && networkTools.has(opts.command)) {
+      const msg = `[QRING] Execution blocked: network access is disabled for profile "${profile.name}", command "${opts.command}" is considered network-related`;
+      if (opts.captureOutput) {
+        return resolve({ code: 126, stdout: "", stderr: msg });
+      }
+      process.stderr.write(msg + "\n");
+      return resolve({ code: 126, stdout: "", stderr: "" });
+    }
+
     const child = spawn(opts.command, opts.args, {
       env: envMap,
       stdio: ["inherit", "pipe", "pipe"],
-      shell: true,
+      shell: false,
     });
 
     let timedOut = false;

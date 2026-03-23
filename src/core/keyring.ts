@@ -271,6 +271,7 @@ export function setSecret(
   const rotPfx = opts.rotationPrefix ?? existing?.meta.rotationPrefix;
   const prov = opts.provider ?? existing?.meta.provider;
   const reqApp = opts.requiresApproval ?? existing?.meta.requiresApproval;
+  const jitProv = opts.jitProvider ?? existing?.meta.jitProvider;
 
   if (opts.states) {
     envelope = createEnvelope("", {
@@ -285,6 +286,7 @@ export function setSecret(
       rotationPrefix: rotPfx,
       provider: prov,
       requiresApproval: reqApp,
+      jitProvider: jitProv,
     });
   } else {
     envelope = createEnvelope(value, {
@@ -297,6 +299,7 @@ export function setSecret(
       rotationPrefix: rotPfx,
       provider: prov,
       requiresApproval: reqApp,
+      jitProvider: jitProv,
     });
   }
 
@@ -481,10 +484,13 @@ export function exportSecrets(
 
   const rawValues = new Map<string, string>();
 
+  // Process in precedence order: global < org < team < project
   const globalEntries = entries.filter((e) => e.scope === "global");
+  const orgEntries = entries.filter((e) => e.scope === "org");
+  const teamEntries = entries.filter((e) => e.scope === "team");
   const projectEntries = entries.filter((e) => e.scope === "project");
 
-  for (const entry of [...globalEntries, ...projectEntries]) {
+  for (const entry of [...globalEntries, ...orgEntries, ...teamEntries, ...projectEntries]) {
     if (entry.envelope) {
       const decay = checkDecay(entry.envelope);
       if (decay.isExpired) continue;
