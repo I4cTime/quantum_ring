@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.1] — 2026-03-24
+
+### Changed
+- **CHANGELOG** — added missing Tier 4–6 feature entries (composite secrets, approvals, JIT, exec, scanner, linter, memory, context, governance, scopes, rotation, CI validation, audit export) to the v0.9.0 record.
+- **Web landing site** — added 11 feature cards, 3 MCP tool groups (15 tools), 8 architecture modules; updated tool count from 31 to 44 and feature count from 13 to 24.
+- **Web changelog** — synced with CHANGELOG.md.
+- **Stats** — removed Tiers and Platforms cards; kept MCP Tools and Quantum Features.
+
 ## [0.9.0] — 2026-03-22
 
 ### Added
