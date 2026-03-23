@@ -320,6 +320,8 @@ qring hook test <id>
 
 Hooks are fire-and-forget: a failing hook never blocks secret operations. The hook registry is stored at `~/.config/q-ring/hooks.json`.
 
+**SSRF protection:** HTTP hook URLs targeting private/loopback IP ranges (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`, `::1`, `fc00::/7`) are blocked by default. DNS resolution is checked before the request is sent. To allow hooks targeting local services (e.g. during development), set the environment variable `Q_RING_ALLOW_PRIVATE_HOOKS=1`.
+
 ### Configurable Rotation
 
 Set a rotation format per secret so the agent auto-rotates with the correct value shape.

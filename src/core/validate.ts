@@ -3,8 +3,7 @@
  * with its target service using a pluggable provider system.
  */
 
-import { request as httpsRequest } from "node:https";
-import { request as httpRequest } from "node:http";
+import { httpRequest_ } from "../utils/http-request.js";
 import { generateSecret, type NoiseFormat } from "./noise.js";
 
 export interface ValidationResult {
@@ -28,27 +27,7 @@ function makeRequest(
   headers: Record<string, string>,
   timeoutMs = 10000,
 ): Promise<{ statusCode: number; body: string }> {
-  return new Promise((resolve, reject) => {
-    const parsedUrl = new URL(url);
-    const reqFn = parsedUrl.protocol === "https:" ? httpsRequest : httpRequest;
-    const req = reqFn(
-      url,
-      { method: "GET", headers, timeout: timeoutMs },
-      (res) => {
-        let body = "";
-        res.on("data", (chunk) => (body += chunk));
-        res.on("end", () =>
-          resolve({ statusCode: res.statusCode ?? 0, body }),
-        );
-      },
-    );
-    req.on("error", reject);
-    req.on("timeout", () => {
-      req.destroy();
-      reject(new Error("Request timed out"));
-    });
-    req.end();
-  });
+  return httpRequest_({ url, method: "GET", headers, timeoutMs });
 }
 
 export class ProviderRegistry {
