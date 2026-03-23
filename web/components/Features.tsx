@@ -152,6 +152,119 @@ const features = [
     desc: "Generate .env files from the project manifest, resolving each key with environment-aware superposition collapse.",
     cmd: "qring env:generate --output .env",
   },
+  {
+    icon: (
+      <>
+        <polyline points="4 17 10 11 4 5" />
+        <line x1="12" y1="19" x2="20" y2="19" />
+      </>
+    ),
+    title: "Secure Execution",
+    desc: "Run commands with secrets injected into the environment. All known values are auto-redacted from stdout and stderr.",
+    cmd: "qring exec -- npm run deploy",
+  },
+  {
+    icon: (
+      <>
+        <circle cx="11" cy="11" r="8" />
+        <path d="m21 21-4.3-4.3" />
+      </>
+    ),
+    title: "Codebase Scanner",
+    desc: "Detect hardcoded credentials using regex heuristics and Shannon entropy analysis. Migrate legacy codebases fast.",
+    cmd: "qring scan .",
+  },
+  {
+    icon: (
+      <>
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <path d="M12 8v4" />
+        <path d="M12 16h.01" />
+      </>
+    ),
+    title: "Governance Policy",
+    desc: "Define MCP tool gating, key access restrictions, exec allowlists, and secret lifecycle rules in .q-ring.json.",
+    cmd: "qring policy",
+  },
+  {
+    icon: (
+      <>
+        <rect x="3" y="11" width="18" height="11" rx="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </>
+    ),
+    title: "User Approvals",
+    desc: "Zero-trust MCP access. Sensitive secrets require HMAC-verified, scoped, time-limited approval tokens before reads.",
+    cmd: 'qring approve PROD_DB_URL --for 3600',
+  },
+  {
+    icon: (
+      <>
+        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+      </>
+    ),
+    title: "JIT Provisioning",
+    desc: "Dynamically generate short-lived tokens on read. AWS STS role assumption, generic HTTP endpoints, and caching.",
+    cmd: 'qring set AWS_KEYS \'...\' --jit-provider aws-sts',
+  },
+  {
+    icon: (
+      <>
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </>
+    ),
+    title: "Agent Memory",
+    desc: "Encrypted, persistent key-value store that survives across AI agent sessions. Remember decisions and context.",
+    cmd: 'qring remember last_rotation "Rotated on 2026-03-21"',
+  },
+  {
+    icon: (
+      <>
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+        <path d="M14 2v6h6" />
+        <path d="M16 13H8" />
+        <path d="M16 17H8" />
+        <path d="M10 9H8" />
+      </>
+    ),
+    title: "Secret Linter",
+    desc: "Scan specific files for hardcoded secrets. Use --fix to auto-replace with process.env references and store in q-ring.",
+    cmd: "qring lint src/config.ts --fix",
+  },
+  {
+    icon: (
+      <>
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </>
+    ),
+    title: "Team & Org Scopes",
+    desc: "Share secrets across teams and orgs. Resolution cascades: project → team → org → global (most specific wins).",
+    cmd: 'qring set SHARED_KEY "sk-..." --team my-team',
+  },
+  {
+    icon: (
+      <>
+        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+        <path d="M3 3v5h5" />
+      </>
+    ),
+    title: "Issuer-Native Rotation",
+    desc: "Attempt provider-native secret rotation for supported services, or fall back to local quantum noise generation.",
+    cmd: "qring rotate STRIPE_KEY",
+  },
+  {
+    icon: (
+      <>
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+      </>
+    ),
+    title: "Secret Analytics",
+    desc: "Analyze usage patterns: most accessed secrets, unused/stale keys, scope optimization, and rotation recommendations.",
+    cmd: "qring analyze",
+  },
 ];
 
 export default function Features() {
@@ -165,7 +278,7 @@ export default function Features() {
         </FadeIn>
         <FadeIn delay={0.1}>
           <p className="text-center text-text-secondary text-lg max-w-[600px] mx-auto mb-12">
-            Thirteen mechanics inspired by quantum physics, engineered for
+            Twenty-four capabilities inspired by quantum physics, engineered for
             real-world secret management.
           </p>
         </FadeIn>

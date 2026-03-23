@@ -82,7 +82,10 @@ const groups: McpGroup[] = [
     tools: [
       { name: "audit_log", desc: "Query access history" },
       { name: "detect_anomalies", desc: "Scan for unusual patterns" },
+      { name: "verify_audit_chain", desc: "Verify tamper-evident hash chain" },
+      { name: "export_audit", desc: "Export audit events (jsonl/json/csv)" },
       { name: "health_check", desc: "Full health report" },
+      { name: "status_dashboard", desc: "Launch live status dashboard" },
       { name: "agent_scan", desc: "Autonomous agent scan" },
     ],
   },
@@ -113,6 +116,53 @@ const groups: McpGroup[] = [
       { name: "remove_hook", desc: "Remove a hook by ID" },
     ],
   },
+  {
+    title: "Execution & Scanning",
+    icon: (
+      <>
+        <polyline points="4 17 10 11 4 5" />
+        <line x1="12" y1="19" x2="20" y2="19" />
+      </>
+    ),
+    tools: [
+      { name: "exec_with_secrets", desc: "Run commands with injected secrets and auto-redacted output" },
+      { name: "scan_codebase_for_secrets", desc: "Scan directories for hardcoded secrets via entropy analysis" },
+      { name: "lint_files", desc: "Lint files for hardcoded secrets with optional auto-fix" },
+    ],
+  },
+  {
+    title: "AI Agent Tools",
+    icon: (
+      <>
+        <path d="M12 8V4H8" />
+        <rect x="2" y="2" width="20" height="20" rx="5" />
+        <path d="M8 2v4" />
+        <path d="M16 2v4" />
+        <path d="M2 10h20" />
+      </>
+    ),
+    tools: [
+      { name: "get_project_context", desc: "Safe, redacted overview for agent system prompts" },
+      { name: "agent_remember", desc: "Store key-value in encrypted agent memory" },
+      { name: "agent_recall", desc: "Retrieve from agent memory or list all keys" },
+      { name: "agent_forget", desc: "Delete a key from agent memory" },
+      { name: "analyze_secrets", desc: "Usage analytics and rotation recommendations" },
+    ],
+  },
+  {
+    title: "Governance & Policy",
+    icon: (
+      <>
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      </>
+    ),
+    tools: [
+      { name: "check_policy", desc: "Check if an action is allowed by project policy" },
+      { name: "get_policy_summary", desc: "Get governance policy configuration summary" },
+      { name: "rotate_secret", desc: "Attempt issuer-native rotation via provider" },
+      { name: "ci_validate_secrets", desc: "CI batch validation with structured pass/fail" },
+    ],
+  },
 ];
 
 export default function McpSection() {
@@ -126,7 +176,7 @@ export default function McpSection() {
         </FadeIn>
         <FadeIn delay={0.1}>
           <p className="text-center text-text-secondary text-lg max-w-[600px] mx-auto mb-12">
-            31 tools for seamless AI agent integration. Works with Cursor, Kiro,
+            44 tools for seamless AI agent integration. Works with Cursor, Kiro,
             and Claude Code.
           </p>
         </FadeIn>
