@@ -5,8 +5,7 @@
  * until they expire.
  */
 
-import { request as httpsRequest } from "node:https";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 
 export interface ProvisionResult {
   value: string;
@@ -83,7 +82,7 @@ const awsStsProvider: JitProvider = {
 
 const httpProvider: JitProvider = {
   name: "http",
-  description: "Generic HTTP token endpoint (POST) using Node.js https",
+  description: "Generic HTTP token endpoint using Node.js http/https",
   provision(configRaw: string): ProvisionResult {
     let config: any;
     try {
@@ -99,8 +98,6 @@ const httpProvider: JitProvider = {
 
     if (!url) throw new Error("http provider requires url in config");
 
-    // Use synchronous approach with Node.js https
-    const parsedUrl = new URL(url);
     const headers: Record<string, string> = {
       "User-Agent": "q-ring-jit/1.0",
       ...(config.headers ?? {}),
@@ -111,28 +108,36 @@ const httpProvider: JitProvider = {
       bodyStr = JSON.stringify(config.body);
     }
 
-    try {
-      const output = execFileSync("node", [
-        "-e",
-        `
-const http = require(${JSON.stringify(parsedUrl.protocol === "https:" ? "node:https" : "node:http")});
-const options = {
-  method: ${JSON.stringify(method)},
-  headers: ${JSON.stringify(headers)},
-  timeout: 30000,
-};
-const req = http.request(${JSON.stringify(url)}, options, (res) => {
+    // Pass config via environment variable to avoid code interpolation
+    const scriptConfig = JSON.stringify({ url, method, headers, bodyStr });
+
+    // Static script that reads config from env var
+    const script = `
+const cfg = JSON.parse(process.env.__QRING_HTTP_CFG);
+const parsedUrl = new URL(cfg.url);
+const http = require(parsedUrl.protocol === "https:" ? "node:https" : "node:http");
+const req = http.request(cfg.url, { method: cfg.method, headers: cfg.headers, timeout: 30000 }, (res) => {
   let body = "";
   res.on("data", (chunk) => body += chunk);
   res.on("end", () => process.stdout.write(body));
 });
 req.on("error", (e) => { process.stderr.write(e.message); process.exit(1); });
-${bodyStr ? `req.write(${JSON.stringify(bodyStr)});` : ""}
+if (cfg.bodyStr) req.write(cfg.bodyStr);
 req.end();
-`,
-      ], { encoding: "utf8", timeout: 35000 });
+`;
 
-      const parsed = JSON.parse(output);
+    try {
+      const result = spawnSync("node", ["-e", script], {
+        encoding: "utf8",
+        timeout: 35000,
+        env: { ...process.env, __QRING_HTTP_CFG: scriptConfig },
+      });
+
+      if (result.status !== 0) {
+        throw new Error(result.stderr || "HTTP request failed");
+      }
+
+      const parsed = JSON.parse(result.stdout);
       let val = parsed;
       for (const key of valuePath.split(".")) {
         val = val[key];
