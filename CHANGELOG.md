@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.1] — 2026-03-22
+## [0.9.0] — 2026-03-22
 
 ### Added
 - **Shared HTTP client** (`http-request`) for validation and hooks with timeouts and response size limits.

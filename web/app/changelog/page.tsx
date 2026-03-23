@@ -17,7 +17,7 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
-    version: "0.4.1",
+    version: "0.9.0",
     date: "2026-03-22",
     highlights: [
       { type: "added", text: "Shared HTTP client for validation/hooks; SSRF mitigation for HTTP hooks (private IP block; Q_RING_ALLOW_PRIVATE_HOOKS override)" },
