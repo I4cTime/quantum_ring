@@ -591,8 +591,7 @@ export default function DocsPage() {
             </section>
           </FadeIn>
 
-          <FadeIn delay={0.35}>
-            <section className="mb-16 border-t border-border pt-10">
+          <section className="mb-16 border-t border-border pt-10">
               <h2 className="text-3xl font-bold mb-4 text-text-primary">
                 CLI Complete Reference
               </h2>
@@ -640,10 +639,8 @@ export default function DocsPage() {
                 ))}
               </div>
             </section>
-          </FadeIn>
 
-          <FadeIn delay={0.4}>
-            <section className="mb-16 border-t border-border pt-10">
+          <section className="mb-16 border-t border-border pt-10">
               <h2 className="text-3xl font-bold mb-4 text-text-primary">
                 MCP Prompt Cookbook
               </h2>
@@ -666,7 +663,6 @@ export default function DocsPage() {
                 ))}
               </div>
             </section>
-          </FadeIn>
 
           <FadeIn delay={0.45}>
             <div className="border-t border-border pt-8 text-center">
