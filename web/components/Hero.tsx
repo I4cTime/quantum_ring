@@ -100,7 +100,7 @@ export default function Hero() {
             { href: "https://www.npmjs.com/package/@i4ctime/q-ring", src: "https://img.shields.io/npm/v/@i4ctime/q-ring?style=flat-square&color=0ea5e9&label=npm", alt: "npm version" },
             { href: "https://github.com/I4cTime/quantum_ring", src: "https://img.shields.io/github/stars/I4cTime/quantum_ring?style=flat-square&color=0ea5e9&label=stars", alt: "GitHub stars" },
             { href: "https://github.com/I4cTime/quantum_ring/blob/main/LICENSE", src: "https://img.shields.io/badge/license-AGPL--3.0-0ea5e9?style=flat-square", alt: "AGPL-3.0 license" },
-            { href: "https://ko-fi.com/i4cdeath", src: "https://img.shields.io/badge/Ko--fi-Support-ff5e5b?style=flat-square&logo=ko-fi&logoColor=white", alt: "Ko-fi" },
+            { href: "https://ko-fi.com/i4ctime", src: "https://img.shields.io/badge/Ko--fi-Support-ff5e5b?style=flat-square&logo=ko-fi&logoColor=white", alt: "Ko-fi" },
           ].map((b) => (
             <a key={b.alt} href={b.href} className="group" target="_blank" rel="noopener">
               {/* eslint-disable-next-line @next/next/no-img-element */}
