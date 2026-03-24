@@ -8,7 +8,7 @@
 
 [![NPM Version](https://img.shields.io/npm/v/@i4ctime/q-ring?style=flat-square&color=0ea5e9)](https://www.npmjs.com/package/@i4ctime/q-ring)
 [![Docs](https://img.shields.io/badge/docs-website-0ea5e9?style=flat-square)](https://i4ctime.github.io/quantum_ring/docs)
-[![qring-mcp MCP server](https://glama.ai/mcp/servers/I4cTime/quantum_ring/badges/badge.svg)](https://glama.ai/mcp/servers/I4cTime/quantum_ring)
+[![MCP Tools](https://img.shields.io/badge/MCP_tools-44-0ea5e9?style=flat-square)](https://glama.ai/mcp/servers/I4cTime/quantum_ring)
 
 Stop pasting API keys into plain-text `.env` files or wrestling with clunky secret managers. **q-ring** securely anchors your credentials to your OS's native vault (macOS Keychain, Linux Secret Service, Windows Credential Vault) and supercharges them with mechanics from quantum physics.
 
@@ -19,7 +19,7 @@ Stop pasting API keys into plain-text `.env` files or wrestling with clunky secr
 - **Entanglement:** Link keys across projects so rotating one automatically updates them all.
 - **Tunneling:** Create ephemeral, in-memory secrets that self-destruct after a set time or read count.
 - **Teleportation:** Securely pack and share AES-256-GCM encrypted secret bundles.
-- **Seamless AI Integration:** 31 built-in MCP tools for native use in **Cursor**, **Kiro**, and **Claude Code**.
+- **Seamless AI Integration:** 44 built-in MCP tools for native use in **Cursor**, **Kiro**, and **Claude Code**.
 
 ## 🚀 Installation
 
