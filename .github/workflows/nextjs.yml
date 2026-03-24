@@ -5,11 +5,11 @@ name: Next.js
 
 on:
   push:
-    branches: [main, develop]
+    branches: [develop]
     paths:
       - "web/**"
   pull_request:
-    branches: [main, develop]
+    branches: [develop, main]
     paths:
       - "web/**"
 
