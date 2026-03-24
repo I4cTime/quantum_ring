@@ -8,7 +8,12 @@
 
 [![NPM Version](https://img.shields.io/npm/v/@i4ctime/q-ring?style=flat-square&color=0ea5e9)](https://www.npmjs.com/package/@i4ctime/q-ring)
 [![Docs](https://img.shields.io/badge/docs-website-0ea5e9?style=flat-square)](https://i4ctime.github.io/quantum_ring/docs)
-[![quantum_ring MCP server](https://glama.ai/mcp/servers/I4cTime/quantum_ring/badges/card.svg)](https://glama.ai/mcp/servers/I4cTime/quantum_ring)
+[![MCP Tools](https://img.shields.io/badge/MCP_tools-44-0ea5e9?style=flat-square)](https://glama.ai/mcp/servers/I4cTime/quantum_ring)
+[![License](https://img.shields.io/npm/l/@i4ctime/q-ring?style=flat-square&color=0ea5e9)](https://github.com/I4cTime/quantum_ring/blob/main/LICENSE)
+
+<a href="https://glama.ai/mcp/servers/I4cTime/quantum_ring">
+  <img src="https://glama.ai/mcp/servers/I4cTime/quantum_ring/badges/card.svg" alt="quantum_ring MCP server" width="400" />
+</a>
 
 Stop pasting API keys into plain-text `.env` files or wrestling with clunky secret managers. **q-ring** securely anchors your credentials to your OS's native vault (macOS Keychain, Linux Secret Service, Windows Credential Vault) and supercharges them with mechanics from quantum physics.
 
