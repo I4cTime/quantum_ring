@@ -29,7 +29,7 @@ export default function Footer() {
           <a href="https://www.npmjs.com/package/@i4ctime/q-ring" target="_blank" rel="noopener" className="text-text-secondary hover:text-accent transition-colors">
             npm
           </a>
-          <a href="https://ko-fi.com/i4cdeath" target="_blank" rel="noopener" className="text-text-secondary hover:text-accent transition-colors">
+          <a href="https://ko-fi.com/i4ctime" target="_blank" rel="noopener" className="text-text-secondary hover:text-accent transition-colors">
             Ko-fi
           </a>
           <a href="https://github.com/I4cTime/quantum_ring/blob/main/LICENSE" target="_blank" rel="noopener" className="text-text-secondary hover:text-accent transition-colors">
