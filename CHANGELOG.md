@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.2] — 2026-03-24
+
+### Changed
+- **README** — improved intro with structured feature list, added documentation link callout, replaced broken Glama badge with card layout, added License and MCP Tools badges, corrected MCP tool count from 31 to 44.
+- **Docs page** — added short descriptions to every CLI command in the web reference.
+- **Repo settings** — added CODEOWNERS, updated branch rulesets to require `check` + `analyze` status checks and code owner review, disabled default CodeQL setup.
+
 ## [0.9.1] — 2026-03-24
 
 ### Changed
