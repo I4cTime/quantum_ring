@@ -21,6 +21,15 @@ export const metadata: Metadata = {
   title: "q-ring — Quantum Keyring for AI Agents",
   description:
     "The first quantum-inspired keyring built specifically for AI coding agents. Secure secrets with superposition, entanglement, tunneling, and teleportation.",
+  icons: {
+    icon: [
+      { url: "/assets/icon.png", sizes: "32x32", type: "image/png" },
+      { url: "/assets/icon.png", sizes: "192x192", type: "image/png" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    apple: [{ url: "/assets/icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: ["/favicon.ico"],
+  },
   openGraph: {
     title: "q-ring — Quantum Keyring for AI Agents",
     description:
