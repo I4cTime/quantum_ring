@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.3] — 2026-03-25
+
+### Changed
+- **Custom domain** — site now served at `qring.i4c.studio` instead of `i4ctime.github.io/quantum_ring`. Removed `basePath`, updated all asset paths and metadata.
+- **Funding** — Ko-fi slug updated to `i4ctime`.
+- **Favicon** — icon metadata added to layout for branded browser/Apple touch icons.
+- **Deploy workflow** — CNAME file persists across `gh-pages` deploys.
+
 ## [0.9.2] — 2026-03-24
 
 ### Changed
