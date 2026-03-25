@@ -19,6 +19,8 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:ci": "vitest run",
     "prepublishOnly": "pnpm run build"
   },
   "keywords": [
@@ -51,6 +53,7 @@
   "devDependencies": {
     "@types/node": "^25.5.0",
     "tsup": "^8.5.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.1"
   }
 }
