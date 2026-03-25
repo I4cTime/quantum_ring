@@ -34,7 +34,7 @@ export default function Hero() {
       <div className="max-w-[1200px] mx-auto px-6 relative z-1">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/quantum_ring/assets/social-card-optimized.jpg"
+          src="/assets/social-card-optimized.jpg"
           alt="q-ring social card"
           className="max-w-[360px] h-auto rounded-lg mb-6 drop-shadow-[0_0_20px_var(--color-accent-dim)] animate-float mx-auto"
           width={360}
