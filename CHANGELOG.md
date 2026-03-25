@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.4] — 2026-03-25
+
+### Added
+- **Vitest test suite** — 125 tests across 17 files covering core modules (noise, envelope, tunnel, teleport, entanglement, scan, linter, memory, hooks, approval, observer, policy, collapse, scope), CLI command registration, and MCP tool registration (all 44 tools verified).
+- **CI test step** — `pnpm run test:ci` added to `ci.yml` workflow after the build step.
+- **Homebrew tap** — `I4cTime/homebrew-tap` repo with `Formula/qring.rb` for `brew tap I4cTime/tap && brew install qring`.
+- **Homebrew auto-update workflow** — `update-homebrew.yml` triggers on release, waits for npm availability, computes sha256, and pushes the updated formula automatically.
+
 ## [0.9.3] — 2026-03-25
 
 ### Changed
