@@ -1,0 +1,84 @@
+name: Update Homebrew Tap
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  update-formula:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get release version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for npm publish
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "Waiting for @i4ctime/q-ring@${VERSION} on npm..."
+          for i in $(seq 1 30); do
+            if npm view "@i4ctime/q-ring@${VERSION}" version 2>/dev/null; then
+              echo "Found on npm!"
+              exit 0
+            fi
+            echo "Attempt $i/30 — not yet available, waiting 10s..."
+            sleep 10
+          done
+          echo "::error::Timed out waiting for npm publish"
+          exit 1
+
+      - name: Compute tarball sha256
+        id: sha
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          URL="https://registry.npmjs.org/@i4ctime/q-ring/-/q-ring-${VERSION}.tgz"
+          SHA=$(curl -sL "$URL" | sha256sum | awk '{print $1}')
+          echo "sha256=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "url=${URL}" >> "$GITHUB_OUTPUT"
+          echo "SHA256: ${SHA}"
+
+      - name: Clone homebrew-tap
+        run: |
+          git clone https://x-access-token:${{ secrets.HOMEBREW_TAP_TOKEN }}@github.com/I4cTime/homebrew-tap.git /tmp/homebrew-tap
+
+      - name: Update formula
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          SHA="${{ steps.sha.outputs.sha256 }}"
+          URL="${{ steps.sha.outputs.url }}"
+
+          cat > /tmp/homebrew-tap/Formula/qring.rb << RUBY
+          class Qring < Formula
+            desc "Quantum keyring for AI coding tools — secrets, superposition, entanglement, MCP"
+            homepage "https://qring.i4c.studio"
+            url "${URL}"
+            sha256 "${SHA}"
+            license "AGPL-3.0-only"
+
+            depends_on "node@22"
+
+            def install
+              system "npm", "install", *std_npm_args
+              bin.install_symlink libexec.glob("bin/*")
+            end
+
+            test do
+              assert_match "qring", shell_output("#{bin}/qring --version")
+            end
+          end
+          RUBY
+
+      - name: Commit and push
+        working-directory: /tmp/homebrew-tap
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/qring.rb
+          git commit -m "Update qring to ${VERSION}"
+          git push
