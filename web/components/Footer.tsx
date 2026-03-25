@@ -7,7 +7,7 @@ export default function Footer() {
         <div className="font-[family-name:var(--font-display)] font-bold text-lg flex items-center gap-1">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/quantum_ring/assets/icon.png"
+            src="/assets/icon.png"
             alt="q-ring icon"
             className="w-6 h-6 object-contain mix-blend-screen drop-shadow-[0_0_6px_var(--color-accent-glow)]"
             width={24}

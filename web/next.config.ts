@@ -3,7 +3,7 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   output: "export",
-  basePath: "/quantum_ring",
+  basePath: "",
   images: { unoptimized: true },
   turbopack: {
     root: path.resolve(__dirname),

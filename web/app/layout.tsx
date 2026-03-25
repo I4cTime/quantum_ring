@@ -17,7 +17,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://i4ctime.github.io/quantum_ring"),
+  metadataBase: new URL("https://qring.i4c.studio"),
   title: "q-ring — Quantum Keyring for AI Agents",
   description:
     "The first quantum-inspired keyring built specifically for AI coding agents. Secure secrets with superposition, entanglement, tunneling, and teleportation.",

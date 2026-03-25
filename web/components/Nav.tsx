@@ -85,20 +85,20 @@ export default function Nav() {
       aria-label="Main navigation"
     >
       <div className="max-w-[1200px] mx-auto px-6 py-3 flex items-center justify-between">
-        <a
-          href="/quantum_ring/"
+        <Link
+          href="/"
           className="font-[family-name:var(--font-display)] font-bold text-xl text-text-primary flex items-center gap-1"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/quantum_ring/assets/icon.png"
+            src="/assets/icon.png"
             alt="q-ring icon"
             className="w-6 h-6 object-contain mix-blend-screen drop-shadow-[0_0_6px_var(--color-accent-glow)]"
             width={24}
             height={24}
           />{" "}
           q-ring
-        </a>
+        </Link>
 
         {/* Desktop links */}
         <div className="hidden md:flex gap-6 text-sm font-medium">
@@ -114,7 +114,7 @@ export default function Nav() {
             ) : (
               <a
                 key={l.label}
-                href={l.href.startsWith("/#") ? `/quantum_ring${l.href.slice(1)}` : l.href}
+                href={l.href.startsWith("/#") ? `${l.href.slice(1)}` : l.href}
                 className="text-text-secondary hover:text-accent-bright transition-colors"
               >
                 {l.label}
@@ -178,7 +178,7 @@ export default function Nav() {
             ) : (
               <a
                 key={l.label}
-                href={l.href.startsWith("/#") ? `/quantum_ring${l.href.slice(1)}` : l.href}
+                href={l.href.startsWith("/#") ? `${l.href.slice(1)}` : l.href}
                 className="text-text-secondary hover:text-accent-bright py-1 transition-colors"
                 onClick={closeMenu}
               >

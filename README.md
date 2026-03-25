@@ -7,7 +7,7 @@
 **The first quantum-inspired keyring built specifically for AI coding agents.**
 
 [![NPM Version](https://img.shields.io/npm/v/@i4ctime/q-ring?style=flat-square&color=0ea5e9)](https://www.npmjs.com/package/@i4ctime/q-ring)
-[![Docs](https://img.shields.io/badge/docs-website-0ea5e9?style=flat-square)](https://i4ctime.github.io/quantum_ring/docs)
+[![Docs](https://img.shields.io/badge/docs-website-0ea5e9?style=flat-square)](https://qring.i4c.studio/docs)
 [![MCP Tools](https://img.shields.io/badge/MCP_tools-44-0ea5e9?style=flat-square)](https://glama.ai/mcp/servers/I4cTime/quantum_ring)
 [![License](https://img.shields.io/npm/l/@i4ctime/q-ring?style=flat-square&color=0ea5e9)](https://github.com/I4cTime/quantum_ring/blob/main/LICENSE)
 
@@ -17,7 +17,7 @@
 
 Stop pasting API keys into plain-text `.env` files or wrestling with clunky secret managers. **q-ring** securely anchors your credentials to your OS's native vault (macOS Keychain, Linux Secret Service, Windows Credential Vault) and supercharges them with mechanics from quantum physics.
 
-> 📖 **[View the Official Documentation](https://i4ctime.github.io/quantum_ring/docs)** for a complete CLI reference, MCP prompt cookbooks, and architecture details.
+> 📖 **[View the Official Documentation](https://qring.i4c.studio/docs)** for a complete CLI reference, MCP prompt cookbooks, and architecture details.
 
 ### Why q-ring?
 - **Superposition:** Store one key with multiple states (dev/staging/prod) that collapse based on context.
