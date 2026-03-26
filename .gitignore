@@ -11,6 +11,7 @@ dist/
 *.key
 .DS_Store
 *.tsbuildinfo
+package-lock.json
 .cursor/
 
 # Local-only publishing checklist (not pushed to GitHub)
