@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "hooks": {
+    "afterFileEdit": [
+      {
+        "command": "Scan the edited file for hardcoded secrets using the lint_files MCP tool. If secrets are found, warn the user and offer to auto-fix."
+      }
+    ],
+    "sessionStart": [
+      {
+        "command": "Call get_project_context via the q-ring MCP to understand the project's secret landscape. Silently note any expired or stale secrets for later mention."
+      }
+    ]
+  }
+}

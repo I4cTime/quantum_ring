@@ -17,6 +17,45 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.9.5",
+    date: "2026-03-26",
+    highlights: [
+      { type: "added", text: "Cursor marketplace plugin — 3 rules, 4 skills, 2 agents, 5 commands, 2 hooks, MCP connector. All 44 tools surfaced through IDE-native components" },
+      { type: "added", text: "Marketplace discovery — `.cursor-plugin/marketplace.json` for monorepo-based plugin resolution" },
+      { type: "added", text: "Web: Cursor Plugin homepage section, plugin nav link, Homebrew install tabs in Hero and docs" },
+      { type: "added", text: "README: Cursor Plugin section and Homebrew install option" },
+      { type: "fixed", text: "Removed beforeShellExecution hook — caused circular block with Cursor metadata injection" },
+      { type: "security", text: "picomatch >=4.0.4 override — resolves ReDoS and method injection vulnerabilities in tsup > tinyglobby > picomatch" },
+    ],
+  },
+  {
+    version: "0.9.4",
+    date: "2026-03-25",
+    highlights: [
+      { type: "added", text: "Vitest test suite — 125 tests across 17 files covering core, CLI, and MCP (all 44 tools verified)" },
+      { type: "added", text: "CI test step — `pnpm run test:ci` added to ci.yml workflow" },
+      { type: "added", text: "Homebrew tap — `brew install i4ctime/tap/qring` with auto-update workflow on release" },
+    ],
+  },
+  {
+    version: "0.9.3",
+    date: "2026-03-25",
+    highlights: [
+      { type: "changed", text: "Custom domain — site now served at `qring.i4c.studio`" },
+      { type: "changed", text: "Funding — Ko-fi slug updated; favicon metadata added" },
+      { type: "changed", text: "Deploy workflow — CNAME file persists across gh-pages deploys" },
+    ],
+  },
+  {
+    version: "0.9.2",
+    date: "2026-03-24",
+    highlights: [
+      { type: "changed", text: "README — improved intro, fixed badges, corrected MCP tool count from 31 to 44" },
+      { type: "changed", text: "Docs page — added descriptions to every CLI command" },
+      { type: "changed", text: "Repo settings — CODEOWNERS, branch rulesets, disabled default CodeQL" },
+    ],
+  },
+  {
     version: "0.9.1",
     date: "2026-03-24",
     highlights: [
