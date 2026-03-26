@@ -16,6 +16,7 @@ const installCmds = [
   { pm: "npm", cmd: "npm install -g @i4ctime/q-ring" },
   { pm: "yarn", cmd: "yarn global add @i4ctime/q-ring" },
   { pm: "bun", cmd: "bun add -g @i4ctime/q-ring" },
+  { pm: "brew", cmd: "brew install i4ctime/tap/qring" },
 ];
 
 const cliReference = [
@@ -635,6 +636,61 @@ export default function DocsPage() {
     }
   }
 }`}
+                </pre>
+              </CopyableTerminal>
+            </section>
+          </FadeIn>
+
+          {/* Step 4: Cursor Plugin */}
+          <FadeIn delay={0.35}>
+            <section className="mb-16">
+              <h2 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 rounded-full bg-accent/20 text-accent flex items-center justify-center text-sm font-bold shrink-0">
+                  4
+                </span>
+                Cursor Plugin
+              </h2>
+              <p className="text-text-secondary mb-6">
+                The <strong className="text-text-primary">q-ring Cursor Plugin</strong> brings
+                quantum secret management directly into your IDE. Install from the
+                Cursor marketplace or copy manually:
+              </p>
+
+              <div className="rounded-md border border-border bg-bg-card p-5 mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-accent-bright font-semibold mb-1">3 Rules</p>
+                    <p className="text-text-secondary">Always-on guidance for secret hygiene, q-ring workflow, and .env safety</p>
+                  </div>
+                  <div>
+                    <p className="text-accent-bright font-semibold mb-1">4 Skills</p>
+                    <p className="text-text-secondary">Auto-triggered: secret management, scanning, rotation, onboarding</p>
+                  </div>
+                  <div>
+                    <p className="text-accent-bright font-semibold mb-1">2 Agents</p>
+                    <p className="text-text-secondary">Security auditor and day-to-day secret ops assistant</p>
+                  </div>
+                  <div>
+                    <p className="text-accent-bright font-semibold mb-1">5 Commands</p>
+                    <p className="text-text-secondary">Scan, health-check, rotate, setup, and teleport</p>
+                  </div>
+                  <div>
+                    <p className="text-accent-bright font-semibold mb-1">2 Hooks</p>
+                    <p className="text-text-secondary">After file edit and session start automation</p>
+                  </div>
+                  <div>
+                    <p className="text-accent-bright font-semibold mb-1">MCP Connector</p>
+                    <p className="text-text-secondary">Auto-connects to qring-mcp — all 44 tools available</p>
+                  </div>
+                </div>
+              </div>
+
+              <CopyableTerminal title="manual install" maxWidth="100%">
+                <pre>
+                  <span className="text-[#555]"># From the quantum_ring repo</span>
+                  {"\n"}
+                  <span className="text-green font-bold">$</span>{" "}
+                  <span className="text-accent-bright font-medium">cp -r cursor-plugin/ ~/.cursor/plugins/qring/</span>
                 </pre>
               </CopyableTerminal>
             </section>

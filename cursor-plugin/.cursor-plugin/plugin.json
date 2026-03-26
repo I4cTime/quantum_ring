@@ -1,0 +1,24 @@
+{
+  "name": "qring",
+  "description": "Quantum keyring for AI agents — manage secrets, scan for leaks, rotate keys, and enforce policy directly from Cursor.",
+  "version": "1.0.0",
+  "author": {
+    "name": "I4cTime"
+  },
+  "homepage": "https://qring.i4c.studio",
+  "repository": "https://github.com/I4cTime/quantum_ring",
+  "license": "AGPL-3.0",
+  "keywords": [
+    "secrets",
+    "keyring",
+    "security",
+    "mcp",
+    "api-keys",
+    "dotenv",
+    "credential-management",
+    "secret-scanning",
+    "secret-rotation",
+    "governance"
+  ],
+  "logo": "https://raw.githubusercontent.com/I4cTime/quantum_ring/main/web/public/assets/logo.png"
+}

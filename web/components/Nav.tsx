@@ -66,6 +66,7 @@ export default function Nav() {
   const navLinks = [
     { href: "/#features", label: "Features" },
     { href: "/#quickstart", label: "Quick Start" },
+    { href: "/#cursor-plugin", label: "Plugin" },
     { href: "/#dashboard", label: "Dashboard" },
     { href: "/#mcp", label: "MCP" },
     { href: "/#architecture", label: "Architecture" },
