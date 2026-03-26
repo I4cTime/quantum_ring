@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.5] — 2026-03-26
+
+### Added
+- **Cursor marketplace plugin** — `cursor-plugin/` with 3 rules, 4 skills, 2 agents, 5 commands, 2 hooks, MCP connector, and marketplace manifest. Surfaces all 44 MCP tools through IDE-native components.
+- **Marketplace discovery** — `.cursor-plugin/marketplace.json` at repo root for monorepo-based plugin resolution.
+- **Web: Cursor Plugin section** — homepage component with animated cards for all plugin components.
+- **Web: Plugin nav link** — "Plugin" added to site navigation.
+- **Web: Homebrew install tabs** — Homebrew option added to Hero and docs install commands.
+- **README: Cursor Plugin section** — table summarizing all plugin components with marketplace install instructions.
+- **README: Homebrew install** — `brew install i4ctime/tap/qring` added to Installation section.
+
+### Changed
+- **Web: docs page** — Step 4 added for Cursor Plugin with component grid and manual install terminal.
+- **Web: Footer** — version updated from v0.9.1 to v0.9.4.
+
+### Fixed
+- **beforeShellExecution hook removed** — Cursor injects base64 metadata into hook commands, causing a circular block. Shell command warnings moved to the `secret-hygiene` rule instead.
+
+### Security
+- **picomatch >=4.0.4** — pnpm override added to resolve ReDoS vulnerability (GHSA-c2c7-rcm5-vvqj) and method injection (GHSA-3v7f-55p6-f55p) in `tsup > tinyglobby > picomatch`.
+
 ## [0.9.4] — 2026-03-25
 
 ### Added
