@@ -46,12 +46,10 @@ export function parseDotenv(content: string): Map<string, string> {
       value = value.slice(1, -1);
     }
 
-    value = value
-      .replace(/\\n/g, "\n")
-      .replace(/\\r/g, "\r")
-      .replace(/\\t/g, "\t")
-      .replace(/\\\\/g, "\\")
-      .replace(/\\"/g, '"');
+    const escapeMap: Record<string, string> = {
+      n: "\n", r: "\r", t: "\t", "\\": "\\", '"': '"',
+    };
+    value = value.replace(/\\([nrt"\\])/g, (_, ch) => escapeMap[ch] ?? ch);
 
     if (value.includes("#") && !line.includes('"') && !line.includes("'")) {
       value = value.split("#")[0].trim();
