@@ -103,25 +103,15 @@ export default function Nav() {
 
         {/* Desktop links */}
         <div className="hidden md:flex gap-6 text-sm font-medium">
-          {navLinks.map((l) =>
-            l.href.startsWith("/") && !l.href.startsWith("/#") ? (
-              <Link
-                key={l.label}
-                href={l.href}
-                className="text-text-secondary hover:text-accent-bright transition-colors"
-              >
-                {l.label}
-              </Link>
-            ) : (
-              <a
-                key={l.label}
-                href={l.href.startsWith("/#") ? `${l.href.slice(1)}` : l.href}
-                className="text-text-secondary hover:text-accent-bright transition-colors"
-              >
-                {l.label}
-              </a>
-            )
-          )}
+          {navLinks.map((l) => (
+            <Link
+              key={l.label}
+              href={l.href}
+              className="text-text-secondary hover:text-accent-bright transition-colors"
+            >
+              {l.label}
+            </Link>
+          ))}
           <a
             href="https://github.com/I4cTime/quantum_ring"
             target="_blank"
@@ -166,27 +156,16 @@ export default function Nav() {
         aria-hidden={!menuOpen}
       >
         <div className="flex flex-col px-6 py-4 gap-3 text-base font-medium">
-          {navLinks.map((l) =>
-            l.href.startsWith("/") && !l.href.startsWith("/#") ? (
-              <Link
-                key={l.label}
-                href={l.href}
-                className="text-text-secondary hover:text-accent-bright py-1 transition-colors"
-                onClick={closeMenu}
-              >
-                {l.label}
-              </Link>
-            ) : (
-              <a
-                key={l.label}
-                href={l.href.startsWith("/#") ? `${l.href.slice(1)}` : l.href}
-                className="text-text-secondary hover:text-accent-bright py-1 transition-colors"
-                onClick={closeMenu}
-              >
-                {l.label}
-              </a>
-            )
-          )}
+          {navLinks.map((l) => (
+            <Link
+              key={l.label}
+              href={l.href}
+              className="text-text-secondary hover:text-accent-bright py-1 transition-colors"
+              onClick={closeMenu}
+            >
+              {l.label}
+            </Link>
+          ))}
           <a
             href="https://github.com/I4cTime/quantum_ring"
             target="_blank"

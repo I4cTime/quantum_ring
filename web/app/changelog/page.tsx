@@ -17,6 +17,13 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.9.7",
+    date: "2026-03-26",
+    highlights: [
+      { type: "fixed", text: "Nav anchor links on subpages — clicking section links from /docs or /changelog now routes back to the homepage via Next.js Link instead of broken same-page anchors" },
+    ],
+  },
+  {
     version: "0.9.6",
     date: "2026-03-26",
     highlights: [
