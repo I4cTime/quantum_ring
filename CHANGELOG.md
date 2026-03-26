@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.7] — 2026-03-26
+
+### Fixed
+- **Nav anchor links on subpages** — clicking Features, Quick Start, Plugin, Dashboard, MCP, or Architecture from `/docs` or `/changelog` now routes back to the homepage before scrolling to the target section. Replaced plain `<a>` tags with Next.js `<Link>` for proper client-side navigation.
+
 ## [0.9.6] — 2026-03-26
 
 ### Security
