@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.6] — 2026-03-26
+
+### Security
+- **Double-escaping fix** — `parseDotenv()` escape-sequence chain replaced with single-pass regex to prevent double-unescape of backslash sequences (CodeQL `js/double-escaping` alert #14, severity: high).
+- **picomatch >=4.0.4 (web)** — pnpm override added to `web/package.json` resolving ReDoS (GHSA-c2c7-rcm5-vvqj) and method injection (GHSA-3v7f-55p6-f55p) in web lockfile.
+- **Stale `package-lock.json` removed** — eliminated false-positive Dependabot alerts from an unused npm lockfile; added to `.gitignore`.
+
+### Added
+- **`parseDotenv` test suite** — 8 unit tests covering escape sequences, double-backslash handling, quoted values, inline comments, and edge cases (133 total tests).
+
 ## [0.9.5] — 2026-03-26
 
 ### Added
