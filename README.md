@@ -31,14 +31,17 @@ Stop pasting API keys into plain-text `.env` files or wrestling with clunky secr
 q-ring is designed to be installed globally so it's available anywhere in your terminal. Pick your favorite package manager:
 
 ```bash
-# npm
-npm install -g @i4ctime/q-ring
-
 # pnpm (recommended)
 pnpm add -g @i4ctime/q-ring
 
+# npm
+npm install -g @i4ctime/q-ring
+
 # yarn
 yarn global add @i4ctime/q-ring
+
+# Homebrew (macOS / Linux)
+brew install i4ctime/tap/qring
 ```
 
 ## ⚡ Quick Start
@@ -793,6 +796,21 @@ Add to `~/.claude/claude_desktop_config.json`:
   }
 }
 ```
+
+## Cursor Plugin
+
+The **q-ring Cursor Plugin** brings quantum secret management directly into your IDE with rules, skills, agents, commands, hooks, and a built-in MCP connector.
+
+| Component | What it does |
+|-----------|-------------|
+| **3 Rules** | Always-on guidance: never hardcode secrets, use q-ring for all ops, warn about `.env` files |
+| **4 Skills** | Auto-triggered by context: secret management, scanning, rotation, project onboarding |
+| **2 Agents** | `security-auditor` (proactive monitoring) and `secret-ops` (day-to-day assistant) |
+| **5 Commands** | `/qring:scan-secrets`, `/qring:health-check`, `/qring:rotate-expired`, `/qring:setup-project`, `/qring:teleport-secrets` |
+| **2 Hooks** | `afterFileEdit` (lint scan), `sessionStart` (project context) |
+| **MCP Connector** | Auto-connects to `qring-mcp` via stdio — all 44 tools available |
+
+Install from the Cursor marketplace or see [`cursor-plugin/README.md`](cursor-plugin/README.md) for manual setup.
 
 ## Architecture
 
