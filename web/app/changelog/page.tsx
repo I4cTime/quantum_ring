@@ -17,6 +17,16 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.9.6",
+    date: "2026-03-26",
+    highlights: [
+      { type: "security", text: "Double-escaping fix — `parseDotenv()` escape chain replaced with single-pass regex to prevent double-unescape (CodeQL js/double-escaping, high severity)" },
+      { type: "security", text: "picomatch >=4.0.4 override added to web lockfile — resolves ReDoS and method injection vulnerabilities" },
+      { type: "security", text: "Stale `package-lock.json` removed — eliminated false-positive Dependabot alerts; added to .gitignore" },
+      { type: "added", text: "8 new `parseDotenv` unit tests covering escape sequences, double-backslash handling, and edge cases (133 total)" },
+    ],
+  },
+  {
     version: "0.9.5",
     date: "2026-03-26",
     highlights: [

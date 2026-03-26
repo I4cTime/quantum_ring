@@ -14,7 +14,7 @@ export default function Footer() {
             height={24}
           />{" "}
           q-ring
-          <span className="text-xs text-text-dim font-normal ml-2">v0.9.4</span>
+          <span className="text-xs text-text-dim font-normal ml-2">v0.9.6</span>
         </div>
         <div className="flex gap-6 text-sm">
           <Link href="/docs" className="text-text-secondary hover:text-accent transition-colors">
