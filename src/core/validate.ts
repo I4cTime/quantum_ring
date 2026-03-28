@@ -5,6 +5,7 @@
 
 import { httpRequest_ } from "../utils/http-request.js";
 import { generateSecret, type NoiseFormat } from "./noise.js";
+import { checkSSRF } from "./ssrf.js";
 
 export interface ValidationResult {
   valid: boolean;
@@ -180,6 +181,11 @@ const httpProvider: Provider = {
 
     if (!url) {
       return { valid: false, status: "unknown", message: "No validation URL configured", latencyMs: 0, provider: "http" };
+    }
+
+    const ssrfBlock = await checkSSRF(url);
+    if (ssrfBlock) {
+      return { valid: false, status: "error", message: `SSRF blocked: ${ssrfBlock}`, latencyMs: Date.now() - start, provider: "http" };
     }
 
     try {

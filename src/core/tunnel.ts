@@ -6,6 +6,8 @@
  * Useful for passing secrets between agents without touching disk.
  */
 
+import { randomBytes } from "node:crypto";
+
 interface TunnelEntry {
   value: string;
   createdAt: number;
@@ -54,7 +56,7 @@ export function tunnelCreate(
   value: string,
   opts: TunnelOptions = {},
 ): string {
-  const id = `tun_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+  const id = `tun_${Date.now().toString(36)}_${randomBytes(6).toString("base64url")}`;
   const now = Date.now();
 
   tunnelStore.set(id, {

@@ -163,10 +163,8 @@ export function createMcpServer(): McpServer {
         );
       }
       if (params.filter) {
-        const regex = new RegExp(
-          "^" + params.filter.replace(/\*/g, ".*") + "$",
-          "i",
-        );
+        const escaped = params.filter.replace(/[.+?^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*");
+        const regex = new RegExp("^" + escaped + "$", "i");
         entries = entries.filter((e) => regex.test(e.key));
       }
       if (entries.length === 0) return text("No secrets found");

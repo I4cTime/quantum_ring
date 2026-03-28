@@ -13,8 +13,11 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { homedir, hostname, userInfo } from "node:os";
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { Entry } from "@napi-rs/keyring";
 
 const MEMORY_FILE = "agent-memory.enc";
+const KEYRING_SERVICE = "qring-memory-key";
+const KEYRING_ACCOUNT = "encryption-key";
 
 function getMemoryDir(): string {
   const dir = join(homedir(), ".config", "q-ring");
@@ -28,32 +31,61 @@ function getMemoryPath(): string {
   return join(getMemoryDir(), MEMORY_FILE);
 }
 
-function deriveKey(): Buffer {
+function deriveLegacyKey(): Buffer {
   const fingerprint = `qring-memory:${hostname()}:${userInfo().username}`;
   return createHash("sha256").update(fingerprint).digest();
 }
 
-function encrypt(data: string): string {
-  const key = deriveKey();
+function getOrCreateKey(): Buffer {
+  try {
+    const entry = new Entry(KEYRING_SERVICE, KEYRING_ACCOUNT);
+    const stored = entry.getPassword();
+    if (stored) return Buffer.from(stored, "base64");
+
+    const key = randomBytes(32);
+    entry.setPassword(key.toString("base64"));
+    return key;
+  } catch {
+    console.warn("[q-ring] OS keyring unavailable for memory key — falling back to machine-derived key");
+    return deriveLegacyKey();
+  }
+}
+
+function encryptWith(data: string, key: Buffer): string {
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key, iv);
   const encrypted = Buffer.concat([cipher.update(data, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
-  // Format: iv:tag:ciphertext (all base64)
   return `${iv.toString("base64")}:${tag.toString("base64")}:${encrypted.toString("base64")}`;
 }
 
-function decrypt(blob: string): string {
+function decryptWith(blob: string, key: Buffer): string {
   const parts = blob.split(":");
   if (parts.length !== 3) throw new Error("Invalid encrypted format");
   const iv = Buffer.from(parts[0], "base64");
   const tag = Buffer.from(parts[1], "base64");
   const encrypted = Buffer.from(parts[2], "base64");
 
-  const key = deriveKey();
   const decipher = createDecipheriv("aes-256-gcm", key, iv);
   decipher.setAuthTag(tag);
   return decipher.update(encrypted) + decipher.final("utf8");
+}
+
+function encrypt(data: string): string {
+  return encryptWith(data, getOrCreateKey());
+}
+
+function decrypt(blob: string): string {
+  const key = getOrCreateKey();
+  try {
+    return decryptWith(blob, key);
+  } catch {
+    // Migration: try legacy key, re-encrypt with new key if successful
+    const legacy = deriveLegacyKey();
+    const plain = decryptWith(blob, legacy);
+    writeFileSync(getMemoryPath(), encryptWith(plain, key), "utf8");
+    return plain;
+  }
 }
 
 interface MemoryStore {
