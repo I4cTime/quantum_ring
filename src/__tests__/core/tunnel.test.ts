@@ -53,4 +53,15 @@ describe("tunnel lifecycle", () => {
     const entry = list.find((t) => t.id === id);
     expect(entry?.accessCount).toBe(2);
   });
+
+  it("generates unique IDs with crypto-safe randomness (base64url suffix)", () => {
+    const ids = new Set<string>();
+    for (let i = 0; i < 100; i++) {
+      ids.add(tunnelCreate(`val-${i}`));
+    }
+    expect(ids.size).toBe(100);
+    for (const id of ids) {
+      expect(id).toMatch(/^tun_[a-z0-9]+_[A-Za-z0-9_-]+$/);
+    }
+  });
 });

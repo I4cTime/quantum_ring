@@ -315,7 +315,7 @@ body{min-height:100vh;overflow-x:hidden;position:relative}
     return '<div class="audit-feed">'+events.slice(0,40).map(e=>
       \`<div class="audit-row">
         <span class="audit-ts">\${fmtTime(e.timestamp)}</span>
-        <span class="audit-action \${e.action}">\${e.action}</span>
+        <span class="audit-action \${esc(e.action)}">\${esc(e.action)}</span>
         <span class="audit-key">\${e.key?esc(e.key):''}</span>
         <span class="audit-detail">\${e.detail?esc(e.detail):''}</span>
       </div>\`

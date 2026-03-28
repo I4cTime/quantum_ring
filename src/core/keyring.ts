@@ -239,6 +239,15 @@ export function getEnvelope(
   key: string,
   opts: KeyringOptions = {},
 ): { envelope: QuantumEnvelope; scope: Scope } | null {
+  const source = opts.source ?? "cli";
+
+  if (source === "mcp") {
+    const policyDecision = checkKeyReadPolicy(key, undefined, opts.projectPath);
+    if (!policyDecision.allowed) {
+      throw new Error(`Policy Denied: ${policyDecision.reason}`);
+    }
+  }
+
   const scopes = resolveScope(opts);
 
   for (const { service, scope } of scopes) {
@@ -356,6 +365,14 @@ export function deleteSecret(
 ): boolean {
   const scopes = resolveScope(opts);
   const source = opts.source ?? "cli";
+
+  if (source === "mcp") {
+    const policyDecision = checkKeyReadPolicy(key, undefined, opts.projectPath);
+    if (!policyDecision.allowed) {
+      throw new Error(`Policy Denied: ${policyDecision.reason}`);
+    }
+  }
+
   let deleted = false;
 
   for (const { service, scope } of scopes) {
@@ -387,6 +404,13 @@ export function hasSecret(
   key: string,
   opts: KeyringOptions = {},
 ): boolean {
+  const source = opts.source ?? "cli";
+
+  if (source === "mcp") {
+    const policyDecision = checkKeyReadPolicy(key, undefined, opts.projectPath);
+    if (!policyDecision.allowed) return false;
+  }
+
   const scopes = resolveScope(opts);
 
   for (const { service } of scopes) {
@@ -456,7 +480,16 @@ export function listSecrets(opts: KeyringOptions = {}): SecretEntry[] {
     logAudit({ action: "list", source });
   }
 
-  return results.sort((a, b) => a.key.localeCompare(b.key));
+  const sorted = results.sort((a, b) => a.key.localeCompare(b.key));
+
+  if (source === "mcp") {
+    return sorted.filter((e) => {
+      const decision = checkKeyReadPolicy(e.key, undefined, opts.projectPath);
+      return decision.allowed;
+    });
+  }
+
+  return sorted;
 }
 
 /**
