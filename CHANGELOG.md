@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.8] — 2026-03-25
+
+### Security
+- **SSRF protection expanded** — extracted `checkSSRF` into shared `src/core/ssrf.ts` module; applied async guard to `validate.ts` (httpProvider) and sync guard to `provision.ts` (JIT HTTP provider). Blocks requests to private/loopback/link-local addresses.
+- **Shell injection fix** — replaced `exec("pgrep -f ...")` with `spawn("pgrep", ["-f", target])` in `hooks.ts` to prevent shell metacharacter injection in signal hook targets.
+- **Dashboard XSS fix** — `renderAudit` now escapes `e.action` through `esc()` in both class attributes and text content, preventing script injection via audit log entries.
+- **MCP policy enforcement** — `listSecrets`, `exportSecrets`, `hasSecret`, `deleteSecret`, and `getEnvelope` now enforce `checkKeyReadPolicy` when `source === "mcp"`, closing a policy bypass for all read/write operations.
+- **Tunnel ID crypto hardening** — replaced `Math.random()` with `crypto.randomBytes()` for tunnel ID generation, ensuring CSPRNG-quality identifiers.
+- **Memory key hardening** — AES-256-GCM encryption key now stored in OS keyring (`@napi-rs/keyring`) instead of derived from `SHA-256(hostname+username)`. Includes automatic migration from legacy key derivation and fallback for environments without keyring access.
+- **Glob-to-regex escaping** — regex metacharacters (`.+?^${}()|[]\\`) are now escaped before `*` → `.*` conversion in both `mcp/server.ts` (list_secrets filter) and `hooks.ts` (keyPattern matching), preventing ReDoS and unintended matches.
+- **Exec profile hardening** — `denyCommands` matching upgraded from substring (`includes`) to word-boundary regex, preventing false positives and evasion via embedded substrings.
+- **Dependency overrides** — added `path-to-regexp >=8.4.0` (root) pnpm override to resolve known vulnerability. `brace-expansion` in web is an upstream ESLint transitive dependency (minimatch@3 → brace-expansion@1) and cannot be overridden without breaking the API.
+- **CSP meta tag** — added `Content-Security-Policy` meta tag to `web/app/layout.tsx` for defense-in-depth on GitHub Pages (where HTTP headers aren't configurable).
+
+### Added
+- **`src/core/ssrf.ts`** — new shared module exporting `isPrivateIP`, `checkSSRF` (async with DNS resolution), and `checkSSRFSync` (sync, IP-literal only).
+- **SSRF test suite** — 12 tests covering private IP detection, async/sync SSRF guards, IPv4/IPv6/mapped addresses, and environment variable override.
+- **Tunnel ID uniqueness test** — verifies 100 generated IDs are unique and match base64url suffix pattern.
+
 ## [0.9.7] — 2026-03-26
 
 ### Fixed

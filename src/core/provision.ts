@@ -6,6 +6,7 @@
  */
 
 import { execFileSync, spawnSync } from "node:child_process";
+import { checkSSRFSync } from "./ssrf.js";
 
 export interface ProvisionResult {
   value: string;
@@ -97,6 +98,9 @@ const httpProvider: JitProvider = {
     const expiresInSeconds = config.expiresInSeconds || 3600;
 
     if (!url) throw new Error("http provider requires url in config");
+
+    const ssrfBlock = checkSSRFSync(url);
+    if (ssrfBlock) throw new Error(`SSRF blocked: ${ssrfBlock}`);
 
     const headers: Record<string, string> = {
       "User-Agent": "q-ring-jit/1.0",

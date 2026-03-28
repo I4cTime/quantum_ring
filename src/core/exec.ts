@@ -137,7 +137,10 @@ export async function execCommand(opts: ExecOptions): Promise<ExecResult> {
   }
 
   if (profile.denyCommands) {
-    const denied = profile.denyCommands.find((d) => fullCommand.includes(d));
+    const denied = profile.denyCommands.find((d) => {
+      const pattern = new RegExp(`(^|[\\s/])${d.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\s|$)`, "i");
+      return pattern.test(fullCommand);
+    });
     if (denied) {
       throw new Error(`Exec profile "${profile.name}" denies command containing "${denied}"`);
     }

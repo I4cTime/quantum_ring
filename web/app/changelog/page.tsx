@@ -17,6 +17,23 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.9.8",
+    date: "2026-03-25",
+    highlights: [
+      { type: "security", text: "SSRF protection expanded — shared guard applied to validate.ts and provision.ts; blocks private/loopback addresses" },
+      { type: "security", text: "Shell injection fix — pgrep in hooks.ts now uses spawn() instead of exec() to prevent metacharacter injection" },
+      { type: "security", text: "Dashboard XSS fix — audit action field escaped in renderAudit to prevent script injection" },
+      { type: "security", text: "MCP policy enforcement — listSecrets, exportSecrets, hasSecret, deleteSecret, getEnvelope now enforce key read policy" },
+      { type: "security", text: "Crypto hardening — tunnel IDs use crypto.randomBytes; memory encryption key stored in OS keyring with migration" },
+      { type: "security", text: "Glob-to-regex escaping — metacharacters escaped in MCP list filter and hook keyPattern matching" },
+      { type: "security", text: "Exec profile hardening — denyCommands uses word-boundary regex instead of substring matching" },
+      { type: "security", text: "Dependency overrides — path-to-regexp >=8.4.0 resolves known vulnerability" },
+      { type: "added", text: "src/core/ssrf.ts — shared SSRF guard with isPrivateIP, checkSSRF (async), and checkSSRFSync" },
+      { type: "added", text: "CSP meta tag added to web layout for defense-in-depth on GitHub Pages" },
+      { type: "added", text: "12 SSRF tests + tunnel ID uniqueness test (150 total tests)" },
+    ],
+  },
+  {
     version: "0.9.7",
     date: "2026-03-26",
     highlights: [
