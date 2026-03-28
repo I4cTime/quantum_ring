@@ -27,7 +27,7 @@ const changelog: ChangelogEntry[] = [
       { type: "security", text: "Crypto hardening — tunnel IDs use crypto.randomBytes; memory encryption key stored in OS keyring with migration" },
       { type: "security", text: "Glob-to-regex escaping — metacharacters escaped in MCP list filter and hook keyPattern matching" },
       { type: "security", text: "Exec profile hardening — denyCommands uses word-boundary regex instead of substring matching" },
-      { type: "security", text: "Dependency overrides — path-to-regexp >=8.4.0 and brace-expansion >=5.0.5 resolve known vulnerabilities" },
+      { type: "security", text: "Dependency overrides — path-to-regexp >=8.4.0 resolves known vulnerability" },
       { type: "added", text: "src/core/ssrf.ts — shared SSRF guard with isPrivateIP, checkSSRF (async), and checkSSRFSync" },
       { type: "added", text: "CSP meta tag added to web layout for defense-in-depth on GitHub Pages" },
       { type: "added", text: "12 SSRF tests + tunnel ID uniqueness test (150 total tests)" },

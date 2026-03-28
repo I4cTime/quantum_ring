@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 - **Memory key hardening** — AES-256-GCM encryption key now stored in OS keyring (`@napi-rs/keyring`) instead of derived from `SHA-256(hostname+username)`. Includes automatic migration from legacy key derivation and fallback for environments without keyring access.
 - **Glob-to-regex escaping** — regex metacharacters (`.+?^${}()|[]\\`) are now escaped before `*` → `.*` conversion in both `mcp/server.ts` (list_secrets filter) and `hooks.ts` (keyPattern matching), preventing ReDoS and unintended matches.
 - **Exec profile hardening** — `denyCommands` matching upgraded from substring (`includes`) to word-boundary regex, preventing false positives and evasion via embedded substrings.
-- **Dependency overrides** — added `path-to-regexp >=8.4.0` (root) and `brace-expansion >=5.0.5` (web) pnpm overrides to resolve known vulnerabilities.
+- **Dependency overrides** — added `path-to-regexp >=8.4.0` (root) pnpm override to resolve known vulnerability. `brace-expansion` in web is an upstream ESLint transitive dependency (minimatch@3 → brace-expansion@1) and cannot be overridden without breaking the API.
 - **CSP meta tag** — added `Content-Security-Policy` meta tag to `web/app/layout.tsx` for defense-in-depth on GitHub Pages (where HTTP headers aren't configurable).
 
 ### Added
