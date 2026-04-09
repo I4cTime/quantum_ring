@@ -17,6 +17,15 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.9.9",
+    date: "2026-03-25",
+    highlights: [
+      { type: "security", text: "hono >=4.12.12 — resolves 5 medium vulnerabilities in transitive dep via @modelcontextprotocol/sdk" },
+      { type: "security", text: "@hono/node-server >=1.19.13 — resolves serveStatic bypass via @modelcontextprotocol/sdk" },
+      { type: "security", text: "vite >=8.0.5 — resolves 2 high + 1 medium vulnerability in dev dep via vitest" },
+    ],
+  },
+  {
     version: "0.9.8",
     date: "2026-03-25",
     highlights: [
