@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.9] — 2026-03-25
+
+### Security
+- **hono >=4.12.12** — pnpm override resolving 5 medium vulnerabilities (cookie name bypass, setCookie validation, IPv4-mapped IPv6 in ipRestriction, serveStatic traversal, toSSG path traversal) in transitive dependency via `@modelcontextprotocol/sdk`.
+- **@hono/node-server >=1.19.13** — pnpm override resolving serveStatic bypass in transitive dependency via `@modelcontextprotocol/sdk`.
+- **vite >=8.0.5** — pnpm override resolving 3 vulnerabilities (2 high: fs.deny bypass + WebSocket file read; 1 medium: optimized deps .map traversal) in dev dependency via `vitest`.
+
 ## [0.9.8] — 2026-03-25
 
 ### Security
