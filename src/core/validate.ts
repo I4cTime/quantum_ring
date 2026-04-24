@@ -3,7 +3,7 @@
  * with its target service using a pluggable provider system.
  */
 
-import { httpRequest_ } from "../utils/http-request.js";
+import { httpRequest } from "../utils/http-request.js";
 import { generateSecret, type NoiseFormat } from "./noise.js";
 import { checkSSRF } from "./ssrf.js";
 
@@ -28,7 +28,7 @@ function makeRequest(
   headers: Record<string, string>,
   timeoutMs = 10000,
 ): Promise<{ statusCode: number; body: string }> {
-  return httpRequest_({ url, method: "GET", headers, timeoutMs });
+  return httpRequest({ url, method: "GET", headers, timeoutMs });
 }
 
 export class ProviderRegistry {

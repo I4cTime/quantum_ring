@@ -6,7 +6,23 @@
  */
 
 import { execFileSync, spawnSync } from "node:child_process";
-import { checkSSRFSync } from "./ssrf.js";
+import { z } from "zod";
+import { checkJitHttpProvisionUrl } from "./ssrf.js";
+
+const AwsStsConfigSchema = z.object({
+  roleArn: z.string(),
+  sessionName: z.string().optional(),
+  durationSeconds: z.number().optional(),
+});
+
+const HttpJitConfigSchema = z.object({
+  url: z.string(),
+  method: z.string().optional(),
+  valuePath: z.string().optional(),
+  expiresInSeconds: z.number().optional(),
+  headers: z.record(z.string(), z.string()).optional(),
+  body: z.unknown().optional(),
+});
 
 export interface ProvisionResult {
   value: string;
@@ -41,18 +57,21 @@ const awsStsProvider: JitProvider = {
   name: "aws-sts",
   description: "AWS STS AssumeRole (requires existing local AWS CLI credentials)",
   provision(configRaw: string): ProvisionResult {
-    let config: any;
+    let raw: unknown;
     try {
-      config = JSON.parse(configRaw);
+      raw = JSON.parse(configRaw);
     } catch {
       throw new Error("aws-sts requires valid JSON config (e.g. {\"roleArn\":\"arn:aws:...\"})");
     }
+    const parsed = AwsStsConfigSchema.safeParse(raw);
+    if (!parsed.success) {
+      throw new Error(`aws-sts invalid config: ${parsed.error.message}`);
+    }
+    const config = parsed.data;
 
     const roleArn = config.roleArn;
     const sessionName = config.sessionName || "q-ring-agent";
     const duration = config.durationSeconds || 3600;
-
-    if (!roleArn) throw new Error("aws-sts requires roleArn in config");
 
     try {
       const output = execFileSync("aws", [
@@ -85,12 +104,17 @@ const httpProvider: JitProvider = {
   name: "http",
   description: "Generic HTTP token endpoint using Node.js http/https",
   provision(configRaw: string): ProvisionResult {
-    let config: any;
+    let raw: unknown;
     try {
-      config = JSON.parse(configRaw);
+      raw = JSON.parse(configRaw);
     } catch {
       throw new Error("http provider requires valid JSON config");
     }
+    const parsed = HttpJitConfigSchema.safeParse(raw);
+    if (!parsed.success) {
+      throw new Error(`http provider invalid config: ${parsed.error.message}`);
+    }
+    const config = parsed.data;
 
     const url = config.url;
     const method = config.method || "POST";
@@ -99,7 +123,7 @@ const httpProvider: JitProvider = {
 
     if (!url) throw new Error("http provider requires url in config");
 
-    const ssrfBlock = checkSSRFSync(url);
+    const ssrfBlock = checkJitHttpProvisionUrl(url);
     if (ssrfBlock) throw new Error(`SSRF blocked: ${ssrfBlock}`);
 
     const headers: Record<string, string> = {

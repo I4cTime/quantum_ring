@@ -13,6 +13,15 @@ describe("teleport pack/unpack", () => {
     expect(bundle.length).toBeGreaterThan(0);
   });
 
+  it("uses a 12-byte AES-GCM IV (NIST-recommended nonce length)", () => {
+    const bundle = teleportPack(secrets, passphrase);
+    const inner = JSON.parse(
+      Buffer.from(bundle, "base64").toString("utf8"),
+    ) as { iv: string };
+    const iv = Buffer.from(inner.iv, "base64");
+    expect(iv.length).toBe(12);
+  });
+
   it("round-trips secrets through pack and unpack", () => {
     const bundle = teleportPack(secrets, passphrase);
     const payload = teleportUnpack(bundle, passphrase);
@@ -33,7 +42,9 @@ describe("teleport pack/unpack", () => {
 
   it("throws on wrong passphrase", () => {
     const bundle = teleportPack(secrets, passphrase);
-    expect(() => teleportUnpack(bundle, "wrong-password")).toThrow();
+    expect(() => teleportUnpack(bundle, "wrong-password")).toThrow(
+      /ERR_TELEPORT_BAD_PASSPHRASE/,
+    );
   });
 
   it("throws on corrupted bundle", () => {

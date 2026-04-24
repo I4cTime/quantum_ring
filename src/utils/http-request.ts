@@ -4,7 +4,7 @@
  */
 
 import { request as httpsRequest } from "node:https";
-import { request as httpRequest } from "node:http";
+import { request as httpRequestPlain } from "node:http";
 
 export interface HttpRequestOptions {
   url: string;
@@ -24,9 +24,12 @@ export interface HttpResponse {
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_MAX_RESPONSE_BYTES = 65_536; // 64 KiB
 
-export function httpRequest_(
-  opts: HttpRequestOptions,
-): Promise<HttpResponse> {
+/**
+ * Perform an HTTP(S) request with a hard timeout and a cap on the response
+ * body size. Always returns a resolved promise unless the network fails or
+ * the timeout fires — partial reads are returned with `truncated: true`.
+ */
+export function httpRequest(opts: HttpRequestOptions): Promise<HttpResponse> {
   const {
     url,
     method = "GET",
@@ -42,7 +45,7 @@ export function httpRequest_(
       reject(new Error(`Unsupported URL protocol: ${parsed.protocol}`));
       return;
     }
-    const reqFn = parsed.protocol === "https:" ? httpsRequest : httpRequest;
+    const reqFn = parsed.protocol === "https:" ? httpsRequest : httpRequestPlain;
 
     const reqHeaders: Record<string, string | number> = { ...headers };
     if (body && !reqHeaders["Content-Length"]) {

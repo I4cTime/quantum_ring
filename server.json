@@ -6,12 +6,12 @@
     "url": "https://github.com/I4cTime/quantum_ring",
     "source": "github"
   },
-  "version": "0.9.9",
+  "version": "0.10.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@i4ctime/q-ring",
-      "version": "0.9.9",
+      "version": "0.10.0",
       "transport": {
         "type": "stdio"
       }

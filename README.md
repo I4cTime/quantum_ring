@@ -881,6 +881,13 @@ Optional per-project configuration:
 - **`validationUrl`** configures the generic HTTP provider's endpoint for custom validation
 - **`policy`** defines governance rules for MCP tool gating, key access restrictions, exec allowlists, and secret lifecycle requirements
 
+## Contributing
+
+- Run **`pnpm run lint`**, **`pnpm run typecheck`**, and **`pnpm run test:ci`** before opening a PR.
+- Tests or sandboxes can point the audit log elsewhere with **`QRING_AUDIT_DIR`** (directory is created if missing); default is `~/.config/q-ring/audit.jsonl`.
+- Optional local pre-commit: **`qring hook:install`** (uses this package’s `precommit` hook when `qring` is on your `PATH`).
+- After changing the Cursor plugin under **`cursor-plugin/`**, run **`pnpm run plugin:sync`** to copy it to `~/.cursor/plugins/local/my-plugin` (or pass a custom path). See also [docs/cli-mcp-parity.md](docs/cli-mcp-parity.md).
+
 ## 📜 License
 
 [AGPL-3.0](LICENSE) - Free to use, modify, and share. Any derivative work or hosted service must release its source code under the same license.

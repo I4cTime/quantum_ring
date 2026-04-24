@@ -15,7 +15,7 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { createHmac, randomBytes } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 export interface ApprovalEntry {
   id: string;
@@ -35,9 +35,9 @@ interface ApprovalRegistry {
 }
 
 function getHmacSecret(): string {
-  const secretPath = join(homedir(), ".config", "q-ring", ".approval-key");
   const dir = join(homedir(), ".config", "q-ring");
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  const secretPath = join(dir, ".approval-key");
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true, mode: 0o700 });
 
   if (existsSync(secretPath)) {
     return readFileSync(secretPath, "utf8").trim();
@@ -48,19 +48,38 @@ function getHmacSecret(): string {
 }
 
 function computeHmac(entry: Omit<ApprovalEntry, "hmac">): string {
-  const payload = `${entry.id}|${entry.key}|${entry.scope}|${entry.reason}|${entry.grantedBy}|${entry.grantedAt}|${entry.expiresAt}`;
+  // Include every persisted field so workspace/sessionId bindings stay
+  // tamper-evident even if they are only surfaced informationally today.
+  const payload = [
+    entry.id,
+    entry.key,
+    entry.scope,
+    entry.reason,
+    entry.grantedBy,
+    entry.grantedAt,
+    entry.expiresAt,
+    entry.workspace ?? "",
+    entry.sessionId ?? "",
+  ].join("|");
   return createHmac("sha256", getHmacSecret()).update(payload).digest("hex");
 }
 
 function verifyHmac(entry: ApprovalEntry): boolean {
   const expected = computeHmac(entry);
-  return expected === entry.hmac;
+  const a = Buffer.from(expected, "utf8");
+  const b = Buffer.from(entry.hmac, "utf8");
+  if (a.length !== b.length) return false;
+  try {
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
 }
 
 function getRegistryPath(): string {
   const dir = join(homedir(), ".config", "q-ring");
   if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
   }
   return join(dir, "approvals.json");
 }

@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.10.0] — 2026-04-24
+
+### Security
+- **Approval HMAC widened** — `computeHmac` now covers `workspace` and `sessionId` in addition to id/key/scope/reason/grantedBy/grantedAt/expiresAt, so tampering with workspace- or session-bound approvals is detected and tokens are rejected as `tampered`.
+- **Approval HMAC timing-safe compare** — verification uses `crypto.timingSafeEqual` on fixed-length hex digests to reduce timing leakage.
+- **Approval registry directory mode** — `~/.config/q-ring/` is created with explicit `mode: 0o700` for both the HMAC secret and the approvals registry.
+- **JIT HTTP SSRF** — `checkJitHttpProvisionUrl` performs synchronous `dns.lookupSync` for non–IP-literal hostnames, blocks non-`http(s)` URLs, and **fails closed** on DNS errors (closes the “sync check passes hostname, child resolves to private” gap).
+- **Teleport AES-GCM** — new bundles use a **12-byte** IV (recommended nonce length); unpacking unchanged for existing bundles.
+- **Registry file permissions** — `entanglement.json` and `hooks.json` writes use mode `0o600`.
+- **Shell hooks** — `exec` replaced with `execFile` (`/bin/sh -c` / Windows `cmd /d /s /c`) with bounded stdout buffer; signal hooks require a strict numeric PID or a constrained `pgrep -f` pattern (no spaces / metacharacters).
+
+### Added
+- **CLI decomposed by category** — replaced the monolithic `register-cli-part{1,2,3}.ts` files with nine themed modules under `src/cli/commands/` (`secrets`, `project`, `quantum`, `validation`, `tooling`, `audit`, `hooks`, `agent`, `security`) plus shared `helpers.ts` / `options.ts`.
+- **MCP tools decomposed by category** — split the 1.5k-line `tool-registration.ts` into ten focused modules under `src/mcp/tools/` (`secrets`, `project`, `tunnel`, `teleport`, `validation`, `tooling`, `audit`, `hooks`, `agent`, `policy`) with a shared `_shared.ts` for Zod schemas and policy enforcement helpers.
+- **Grouped CLI help** — custom `GroupedHelp` renderer displays commands under nine themed sections (Secrets, Project, Quantum, Validation & Rotation, Dev Tooling, Audit & Health, Hooks, Agent Memory, Security & Governance) with glyph headers and dimmed ungrouped fallback.
+- `src/version.ts` — single `PACKAGE_VERSION` from `package.json` for CLI + MCP.
+- `src/services/list-secrets-filter.ts` — shared glob/tag filtering used by CLI and MCP.
+- Global `--json` flag + `qring get --raw`; bracketed MCP tool tags; JSON payloads for several tools; `get_policy_summary` policy-gated.
+- `docs/cli-mcp-parity.md` — full CLI ↔ MCP command/tool mapping, with notes on shared behavior, intentional differences, and remaining CLI-only / MCP-only functionality.
+- Cursor plugin: `/qring:dashboard`, `/qring:analyze`, `/qring:exec-safe`; `exec-with-secrets` skill; hook tweaks; `pnpm run plugin:sync` + `docs:publish-log` scripts.
+- ESLint + Prettier (`pnpm run lint`, `pnpm run format`); CI runs lint on `main`/`develop` pushes.
+- New tests: `keyring-lifecycle.test.ts`, `ssrf-jit.test.ts`, and an approval-tamper test that asserts the widened HMAC rejects forged `workspace` / `sessionId` fields (164 total tests across 24 files).
+
+### Changed
+- `get` CLI default output is JSON; use `--raw` for legacy stdout-only value.
+- MCP: `get_secret`, `list_secrets`, `tunnel_*` create/read, `generate_secret` (unsaved), `agent_recall` return structured JSON text.
+- `teleport_unpack` errors expose machine-readable `ERR_TELEPORT_*` messages (MCP returns JSON error object).
+- Renamed `httpRequest_` → `httpRequest` across `src/utils/http-request.ts` and call sites (`core/hooks.ts`, `core/validate.ts`); the underlying `node:http` request is now imported as `httpRequestPlain` to avoid the shadowing that drove the old underscore suffix.
+
+### Fixed
+- `policy.secrets` is now enforced on `setSecret` via `checkSecretLifecyclePolicy`.
+- JIT envelope refresh uses cross-process file lock under `~/.config/q-ring/jit-locks/`.
+- `queryAudit` reads at most the last 12MB of `audit.jsonl` to cap memory.
+- `matchGlob` ignores overlong branch patterns.
+- `parseEnvelope` / teleport bundles validated with Zod; `checkDecay` handles invalid dates.
+- JIT HTTP / AWS configs validated with Zod in `provision.ts`.
+- Shared secret detection for `scan` + `lint` via `secrets-detect.ts`.
+- Removed dead `src/services/types.ts` (`ServiceResult`/`okResult`/`errResult` were never imported) and the `void listSecrets;` tree-shake workaround in the MCP project tools.
+- Silenced unused-parameter warnings in `src/core/exec.ts` (`_encoding`) and `src/core/keyring.ts` (`_match`) so `--noUnusedParameters` stays clean.
+
 ## [0.9.9] — 2026-03-25
 
 ### Security

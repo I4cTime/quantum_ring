@@ -5,11 +5,8 @@
  * and state without ever exposing actual secret values.
  */
 
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { listSecrets } from "./keyring.js";
 import { collapseEnvironment, readProjectConfig } from "./collapse.js";
-import { checkDecay } from "./envelope.js";
 import { queryAudit } from "./observer.js";
 import { listHooks } from "./hooks.js";
 import { registry as providerRegistry } from "./validate.js";

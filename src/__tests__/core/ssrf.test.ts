@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { isPrivateIP, checkSSRF, checkSSRFSync } from "../../core/ssrf.js";
 
 describe("isPrivateIP", () => {
@@ -63,8 +63,8 @@ describe("checkSSRF", () => {
     expect(result).toContain("Blocked");
   });
 
-  it("returns null for public URLs", async () => {
-    const result = await checkSSRF("https://api.github.com/test");
+  it("returns null for public IP literal URLs (no hostname DNS)", async () => {
+    const result = await checkSSRF("https://8.8.8.8/test");
     expect(result).toBeNull();
   });
 
