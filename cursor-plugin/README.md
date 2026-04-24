@@ -71,10 +71,13 @@ The plugin connects to the `qring-mcp` server via stdio transport, providing acc
 
 Install from the Cursor marketplace, or clone the plugin directory:
 
+From the `quantum_ring` repo root (after `pnpm install`):
+
 ```bash
-# From the quantum_ring repo
-cp -r cursor-plugin/ ~/.cursor/plugins/qring/
+pnpm run plugin:sync
 ```
+
+This copies `cursor-plugin/` to `~/.cursor/plugins/local/my-plugin` by default. Pass a custom destination as the first argument if needed.
 
 ## Configuration
 
@@ -99,4 +102,4 @@ Or run `/qring:setup-project` to create one interactively.
 
 ## License
 
-MIT — Part of the [q-ring](https://github.com/I4cTime/quantum_ring) project.
+AGPL-3.0-only — same as the [@i4ctime/q-ring](https://www.npmjs.com/package/@i4ctime/q-ring) npm package and [quantum_ring](https://github.com/I4cTime/quantum_ring) repository.

@@ -14,5 +14,25 @@ dist/
 package-lock.json
 .cursor/
 
+# Allow-list: these source/doc paths contain the word "secret"/"token"/"credential"
+# but are legitimate project code and must be tracked despite the blanket
+# safety patterns above.
+!src/core/scan.ts
+!src/core/secrets-detect.ts
+!src/cli/commands/secrets.ts
+!src/cli/commands/security.ts
+!src/mcp/tools/secrets.ts
+!src/services/list-secrets-filter.ts
+!src/__tests__/**/*secret*
+!src/__tests__/**/*token*
+!src/__tests__/**/*credential*
+!cursor-plugin/skills/secret-*/
+!cursor-plugin/skills/secret-*/**
+!cursor-plugin/rules/secret-*.mdc
+!cursor-plugin/agents/secret-*.md
+!cursor-plugin/commands/*secret*.md
+!cursor-plugin/commands/*token*.md
+!.cursor/rules/secret-*.mdc
+
 # Local-only publishing checklist (not pushed to GitHub)
 docs/publishing-log.md

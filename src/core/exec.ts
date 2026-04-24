@@ -89,7 +89,7 @@ export class RedactionTransform extends Transform {
     }
   }
 
-  _transform(chunk: Buffer | string, encoding: string, callback: () => void) {
+  _transform(chunk: Buffer | string, _encoding: string, callback: () => void) {
     if (this.patterns.length === 0) {
       this.push(chunk);
       return callback();

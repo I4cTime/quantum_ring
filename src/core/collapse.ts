@@ -138,15 +138,19 @@ export function collapseEnvironment(
  * Match a branch name against glob-style patterns in the branchMap.
  * Supports `*` as a wildcard (e.g., `release/*`, `feature/*`).
  */
+const MAX_BRANCH_GLOB_PATTERN_LEN = 200;
+const MAX_BRANCH_GLOB_REGEX_SOURCE = 400;
+
 function matchGlob(
   branchMap: Record<string, Environment>,
   branch: string,
 ): Environment | undefined {
   for (const [pattern, env] of Object.entries(branchMap)) {
     if (!pattern.includes("*")) continue;
-    const regex = new RegExp(
-      "^" + pattern.replace(/\*/g, ".*") + "$",
-    );
+    if (pattern.length > MAX_BRANCH_GLOB_PATTERN_LEN) continue;
+    const source = "^" + pattern.replace(/\*/g, ".*") + "$";
+    if (source.length > MAX_BRANCH_GLOB_REGEX_SOURCE) continue;
+    const regex = new RegExp(source);
     if (regex.test(branch)) return env;
   }
   return undefined;

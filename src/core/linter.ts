@@ -10,6 +10,7 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { basename, extname } from "node:path";
 import { type ScanResult } from "./scan.js";
 import { setSecret, hasSecret } from "./keyring.js";
+import { findSecretsInLine, calculateEntropy } from "./secrets-detect.js";
 
 export interface LintResult extends ScanResult {
   fixed: boolean;
@@ -67,55 +68,34 @@ export function lintFiles(
 
     if (content.includes("\0")) continue;
 
-    const SECRET_KEYWORDS =
-      /((?:api_?key|secret|token|password|auth|credential|access_?key)[a-z0-9_]*)\s*[:=]\s*(['"])([^'"]+)\2/gi;
-
     const lines = content.split(/\r?\n/);
     const fixes: Array<{ line: number; original: string; replacement: string; keyName: string; value: string }> = [];
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      if (line.length > 500) continue;
+      const matches = findSecretsInLine(line);
 
-      let match: RegExpExecArray | null;
-      SECRET_KEYWORDS.lastIndex = 0;
-
-      while ((match = SECRET_KEYWORDS.exec(line)) !== null) {
-        const varName = match[1].toUpperCase();
-        const quote = match[2];
-        const value = match[3];
-
-        if (value.length < 8) continue;
-        const lv = value.toLowerCase();
-        if (
-          lv.includes("example") ||
-          lv.includes("your_") ||
-          lv.includes("placeholder") ||
-          lv.includes("replace_me") ||
-          lv.includes("xxx")
-        ) continue;
-
-        const entropy = calculateEntropy(value);
-        if (entropy <= 3.5 && !value.startsWith("sk-") && !value.startsWith("ghp_")) continue;
-
+      for (const m of matches) {
+        const varNameUpper = m.varName.toUpperCase();
+        const entropy = calculateEntropy(m.value);
         const shouldFix = opts.fix === true;
 
         if (shouldFix) {
-          const envRef = getEnvRef(file, varName);
+          const envRef = getEnvRef(file, varNameUpper);
           fixes.push({
             line: i,
-            original: `${quote}${value}${quote}`,
+            original: `${m.quote}${m.value}${m.quote}`,
             replacement: envRef,
-            keyName: varName,
-            value,
+            keyName: varNameUpper,
+            value: m.value,
           });
         }
 
         results.push({
           file,
           line: i + 1,
-          keyName: varName,
-          match: value,
+          keyName: varNameUpper,
+          match: m.value,
           context: line.trim(),
           entropy: parseFloat(entropy.toFixed(2)),
           fixed: shouldFix,
@@ -125,7 +105,6 @@ export function lintFiles(
 
     if (opts.fix && fixes.length > 0) {
       const fixLines = content.split(/\r?\n/);
-      // Apply fixes in reverse order to preserve line positions
       for (const fix of fixes.reverse()) {
         const lineIdx = fix.line;
         if (lineIdx >= 0 && lineIdx < fixLines.length) {
@@ -147,20 +126,4 @@ export function lintFiles(
   }
 
   return results;
-}
-
-function calculateEntropy(str: string): number {
-  if (!str) return 0;
-  const len = str.length;
-  const frequencies = new Map<string, number>();
-  for (let i = 0; i < len; i++) {
-    const ch = str[i];
-    frequencies.set(ch, (frequencies.get(ch) || 0) + 1);
-  }
-  let entropy = 0;
-  for (const count of frequencies.values()) {
-    const p = count / len;
-    entropy -= p * Math.log2(p);
-  }
-  return entropy;
 }

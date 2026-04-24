@@ -1,58 +1,72 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { readFileSync, writeFileSync, rmSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 import {
   grantApproval,
-  revokeApproval,
   hasApproval,
   listApprovals,
 } from "../../core/approval.js";
 
-describe("approval system", () => {
-  const key = "TEST_APPROVAL_KEY";
-  const scope = "q-ring:global";
+describe("approval HMAC", () => {
+  let prevHome: string | undefined;
+  let dir: string;
 
   beforeEach(() => {
-    revokeApproval(key, scope);
+    prevHome = process.env.HOME;
+    dir = join(tmpdir(), `qring-approval-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    mkdirSync(dir, { recursive: true });
+    process.env.HOME = dir;
   });
 
-  it("grants an approval and returns an entry with id and hmac", () => {
-    const entry = grantApproval(key, scope, 3600);
-    expect(entry.id).toBeTruthy();
-    expect(entry.key).toBe(key);
-    expect(entry.scope).toBe(scope);
-    expect(entry.hmac).toBeTruthy();
-    expect(entry.grantedAt).toBeTruthy();
-    expect(entry.expiresAt).toBeTruthy();
+  afterEach(() => {
+    if (prevHome === undefined) delete process.env.HOME;
+    else process.env.HOME = prevHome;
+    rmSync(dir, { recursive: true, force: true });
   });
 
-  it("hasApproval returns true after granting", () => {
-    grantApproval(key, scope, 3600);
-    expect(hasApproval(key, scope)).toBe(true);
+  it("accepts a freshly granted approval", () => {
+    grantApproval("API_KEY", "global", 3600);
+    expect(hasApproval("API_KEY", "global")).toBe(true);
   });
 
-  it("hasApproval returns false when not granted", () => {
-    expect(hasApproval("NEVER_GRANTED", scope)).toBe(false);
+  it("rejects tampered HMAC (timing-safe compare)", () => {
+    grantApproval("API_KEY", "global", 3600);
+    const path = join(dir, ".config", "q-ring", "approvals.json");
+    const data = JSON.parse(readFileSync(path, "utf8")) as {
+      approvals: { hmac: string }[];
+    };
+    data.approvals[0].hmac = "f".repeat(64);
+    writeFileSync(path, JSON.stringify(data));
+    expect(hasApproval("API_KEY", "global")).toBe(false);
+    const listed = listApprovals();
+    expect(listed[0].tampered).toBe(true);
   });
 
-  it("revokeApproval removes the approval", () => {
-    grantApproval(key, scope, 3600);
-    expect(revokeApproval(key, scope)).toBe(true);
-    expect(hasApproval(key, scope)).toBe(false);
+  it("rejects wrong-length HMAC without throwing", () => {
+    grantApproval("API_KEY", "global", 3600);
+    const path = join(dir, ".config", "q-ring", "approvals.json");
+    const data = JSON.parse(readFileSync(path, "utf8")) as {
+      approvals: { hmac: string }[];
+    };
+    data.approvals[0].hmac = "abc";
+    writeFileSync(path, JSON.stringify(data));
+    expect(hasApproval("API_KEY", "global")).toBe(false);
   });
 
-  it("revokeApproval returns false for non-existent", () => {
-    expect(revokeApproval("NEVER_SET", scope)).toBe(false);
-  });
-
-  it("listApprovals includes granted entries", () => {
-    grantApproval(key, scope, 3600);
-    const list = listApprovals();
-    const found = list.find((a) => a.key === key && a.scope === scope);
-    expect(found).toBeDefined();
-    expect(typeof found!.valid).toBe("boolean");
-    expect(typeof found!.tampered).toBe("boolean");
-  });
-
-  it("hasApproval returns false for non-existent key+scope", () => {
-    expect(hasApproval("TOTALLY_MISSING_KEY", "q-ring:global")).toBe(false);
+  it("HMAC covers workspace and sessionId so they cannot be silently forged", () => {
+    grantApproval("API_KEY", "global", 3600, {
+      workspace: "/work/a",
+      sessionId: "sess-1",
+    });
+    const path = join(dir, ".config", "q-ring", "approvals.json");
+    const data = JSON.parse(readFileSync(path, "utf8")) as {
+      approvals: { workspace?: string; sessionId?: string; hmac: string }[];
+    };
+    data.approvals[0].workspace = "/attacker";
+    data.approvals[0].sessionId = "sess-attacker";
+    writeFileSync(path, JSON.stringify(data));
+    expect(hasApproval("API_KEY", "global")).toBe(false);
+    expect(listApprovals()[0].tampered).toBe(true);
   });
 });

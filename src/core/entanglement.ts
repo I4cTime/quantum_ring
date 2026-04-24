@@ -45,7 +45,9 @@ function loadRegistry(): EntanglementRegistry {
 }
 
 function saveRegistry(registry: EntanglementRegistry): void {
-  writeFileSync(getRegistryPath(), JSON.stringify(registry, null, 2));
+  writeFileSync(getRegistryPath(), JSON.stringify(registry, null, 2), {
+    mode: 0o600,
+  });
 }
 
 export function entangle(

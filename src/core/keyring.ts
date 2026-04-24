@@ -1,3 +1,6 @@
+import { mkdirSync, writeFileSync, unlinkSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { Entry, findCredentials } from "@napi-rs/keyring";
 import {
   resolveScope,
@@ -18,15 +21,42 @@ import {
   checkDecay,
   recordAccess,
   type DecayStatus,
-  type EntanglementLink,
 } from "./envelope.js";
-import { collapseEnvironment, type CollapseContext } from "./collapse.js";
-import { logAudit, type AuditAction } from "./observer.js";
+import { collapseEnvironment } from "./collapse.js";
+import { logAudit } from "./observer.js";
 import { findEntangled, entangle as entangleLink, disentangle as disentangleLink } from "./entanglement.js";
 import { fireHooks } from "./hooks.js";
 import { hasApproval } from "./approval.js";
 import { registry as jitRegistry } from "./provision.js";
-import { checkKeyReadPolicy } from "./policy.js";
+import { checkKeyReadPolicy, checkSecretLifecyclePolicy } from "./policy.js";
+
+function withJitEnvelopeLock<T>(service: string, key: string, fn: () => T): T {
+  const dir = join(homedir(), ".config", "q-ring", "jit-locks");
+  mkdirSync(dir, { recursive: true });
+  const safe = Buffer.from(`${service}\0${key}`, "utf8").toString("base64url");
+  const lockPath = join(dir, `${safe}.lock`);
+  const deadline = Date.now() + 8000;
+  while (Date.now() < deadline) {
+    try {
+      writeFileSync(lockPath, `${process.pid}\n`, { flag: "wx", mode: 0o600 });
+      try {
+        return fn();
+      } finally {
+        try {
+          unlinkSync(lockPath);
+        } catch {
+          /* ignore */
+        }
+      }
+    } catch {
+      const start = Date.now();
+      while (Date.now() - start < 15) {
+        /* busy-wait spin (~15ms) before retry */
+      }
+    }
+  }
+  throw new Error("Could not acquire JIT envelope lock (timeout)");
+}
 
 export interface SecretEntry {
   key: string;
@@ -103,7 +133,7 @@ function resolveEnv(opts: KeyringOptions): Environment | undefined {
 function resolveTemplates(value: string, opts: KeyringOptions & { _seen?: Set<string> }, seen: Set<string>): string {
   if (!value.includes("{{") || !value.includes("}}")) return value;
   
-  return value.replace(/\{\{([^}]+)\}\}/g, (match, refKeyRaw) => {
+  return value.replace(/\{\{([^}]+)\}\}/g, (_match, refKeyRaw) => {
     const refKey = refKeyRaw.trim();
     const refValue = getSecret(refKey, { ...opts, _seen: seen });
     if (refValue === null) {
@@ -116,7 +146,7 @@ function resolveTemplates(value: string, opts: KeyringOptions & { _seen?: Set<st
 export function resolveTemplatesOffline(value: string, rawValues: Map<string, string>, seen: Set<string>): string {
   if (!value.includes("{{") || !value.includes("}}")) return value;
   
-  return value.replace(/\{\{([^}]+)\}\}/g, (match, refKeyRaw) => {
+  return value.replace(/\{\{([^}]+)\}\}/g, (_match, refKeyRaw) => {
     const refKey = refKeyRaw.trim();
     if (seen.has(refKey)) {
       throw new Error(`Circular dependency detected: ${[...seen].join(" -> ")} -> ${refKey}`);
@@ -206,11 +236,32 @@ export function getSecret(
         }
 
         if (isExpired) {
-          const result = provider.provision(value); // value contains the config
-          envelope.states = envelope.states ?? {};
-          envelope.states["jit"] = result.value;
-          envelope.meta.jitExpiresAt = result.expiresAt;
-          writeEnvelope(service, key, envelope);
+          const jitConfigSource = value;
+          withJitEnvelopeLock(service, key, () => {
+            const latest = readEnvelope(service, key);
+            if (!latest?.meta.jitProvider) return;
+            let innerExpired = true;
+            if (
+              latest.states &&
+              latest.states["jit"] &&
+              latest.meta.jitExpiresAt
+            ) {
+              innerExpired =
+                new Date(latest.meta.jitExpiresAt).getTime() <= Date.now();
+            }
+            if (!innerExpired) {
+              envelope.states = latest.states;
+              envelope.meta.jitExpiresAt = latest.meta.jitExpiresAt;
+              return;
+            }
+            const result = provider.provision(jitConfigSource);
+            latest.states = latest.states ?? {};
+            latest.states["jit"] = result.value;
+            latest.meta.jitExpiresAt = result.expiresAt;
+            writeEnvelope(service, key, latest);
+            envelope.states = latest.states;
+            envelope.meta.jitExpiresAt = latest.meta.jitExpiresAt;
+          });
         }
         value = envelope.states!["jit"];
       }
@@ -281,6 +332,21 @@ export function setSecret(
   const prov = opts.provider ?? existing?.meta.provider;
   const reqApp = opts.requiresApproval ?? existing?.meta.requiresApproval;
   const jitProv = opts.jitProvider ?? existing?.meta.jitProvider;
+
+  const mergedTags = opts.tags ?? existing?.meta.tags;
+  const ttlForPolicy = opts.ttlSeconds ?? existing?.meta.ttlSeconds;
+  const life = checkSecretLifecyclePolicy(
+    {
+      tags: mergedTags,
+      ttlSeconds: ttlForPolicy,
+      rotationFormat: rotFmt,
+      requiresApproval: !!reqApp,
+    },
+    opts.projectPath,
+  );
+  if (!life.allowed) {
+    throw new Error(life.reason ?? "Secret lifecycle policy denied");
+  }
 
   if (opts.states) {
     envelope = createEnvelope("", {
