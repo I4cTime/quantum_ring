@@ -76,6 +76,53 @@ export function checkToolPolicy(toolName: string, projectPath?: string): PolicyD
   return { allowed: true, policySource: ".q-ring.json" };
 }
 
+/** Enforce `policy.secrets` from `.q-ring.json` on writes. */
+export function checkSecretLifecyclePolicy(
+  input: {
+    tags?: string[];
+    ttlSeconds?: number;
+    rotationFormat?: string;
+    requiresApproval?: boolean;
+  },
+  projectPath?: string,
+): PolicyDecision {
+  const policy = loadPolicy(projectPath);
+  if (!policy.secrets) return { allowed: true, policySource: "no-policy" };
+  const s = policy.secrets;
+
+  if (s.maxTtlSeconds != null && input.ttlSeconds != null && input.ttlSeconds > s.maxTtlSeconds) {
+    return {
+      allowed: false,
+      reason: `TTL ${input.ttlSeconds}s exceeds policy maximum ${s.maxTtlSeconds}s`,
+      policySource: ".q-ring.json policy.secrets.maxTtlSeconds",
+    };
+  }
+
+  if (s.requireApprovalForTags?.length && input.tags?.length) {
+    const hit = input.tags.find((t) => s.requireApprovalForTags!.includes(t));
+    if (hit && !input.requiresApproval) {
+      return {
+        allowed: false,
+        reason: `Tag "${hit}" requires explicit approval metadata (set requiresApproval / --requires-approval)`,
+        policySource: ".q-ring.json policy.secrets.requireApprovalForTags",
+      };
+    }
+  }
+
+  if (s.requireRotationFormatForTags?.length && input.tags?.length) {
+    const hit = input.tags.find((t) => s.requireRotationFormatForTags!.includes(t));
+    if (hit && !input.rotationFormat) {
+      return {
+        allowed: false,
+        reason: `Tag "${hit}" requires a rotationFormat to be set`,
+        policySource: ".q-ring.json policy.secrets.requireRotationFormatForTags",
+      };
+    }
+  }
+
+  return { allowed: true, policySource: ".q-ring.json" };
+}
+
 export function checkKeyReadPolicy(key: string, tags: string[] | undefined, projectPath?: string): PolicyDecision {
   const policy = loadPolicy(projectPath);
   if (!policy.mcp) return { allowed: true, policySource: "no-policy" };

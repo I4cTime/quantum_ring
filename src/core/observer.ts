@@ -10,7 +10,17 @@
  * modified or deleted, the chain breaks and `audit:verify` reports it.
  */
 
-import { existsSync, mkdirSync, appendFileSync, readFileSync, writeFileSync, openSync, fstatSync, readSync, closeSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  appendFileSync,
+  readFileSync,
+  openSync,
+  fstatSync,
+  readSync,
+  closeSync,
+  statSync,
+} from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import { createHash } from "node:crypto";
@@ -47,6 +57,12 @@ export interface AuditEvent {
 }
 
 function getAuditDir(): string {
+  if (process.env.QRING_AUDIT_DIR) {
+    if (!existsSync(process.env.QRING_AUDIT_DIR)) {
+      mkdirSync(process.env.QRING_AUDIT_DIR, { recursive: true });
+    }
+    return process.env.QRING_AUDIT_DIR;
+  }
   const dir = join(homedir(), ".config", "q-ring");
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
@@ -115,14 +131,27 @@ export interface AuditQuery {
   correlationId?: string;
 }
 
+/** Cap bytes read from audit log to avoid loading multi-GB files into memory. */
+const MAX_AUDIT_BYTES = 12 * 1024 * 1024;
+
 export function queryAudit(query: AuditQuery = {}): AuditEvent[] {
   const path = getAuditPath();
   if (!existsSync(path)) return [];
 
   try {
-    const lines = readFileSync(path, "utf8")
-      .split("\n")
-      .filter((l) => l.trim());
+    const st = statSync(path);
+    const readStart = st.size > MAX_AUDIT_BYTES ? st.size - MAX_AUDIT_BYTES : 0;
+    const readLen = st.size > MAX_AUDIT_BYTES ? MAX_AUDIT_BYTES : st.size;
+    const buf = Buffer.alloc(readLen);
+    const fd = openSync(path, "r");
+    readSync(fd, buf, 0, readLen, readStart);
+    closeSync(fd);
+    let text = buf.toString("utf8");
+    if (readStart > 0) {
+      const firstNl = text.indexOf("\n");
+      if (firstNl !== -1) text = text.slice(firstNl + 1);
+    }
+    const lines = text.split("\n").filter((l) => l.trim());
 
     let events: AuditEvent[] = lines
       .map((line) => {

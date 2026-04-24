@@ -17,6 +17,27 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.10.0",
+    date: "2026-04-24",
+    highlights: [
+      { type: "added", text: "CLI decomposed by category — nine themed modules under src/cli/commands/ (secrets, project, quantum, validation, tooling, audit, hooks, agent, security) replacing the monolithic register-cli-part{1,2,3}" },
+      { type: "added", text: "MCP tools decomposed by category — ten focused modules under src/mcp/tools/ plus a shared _shared.ts, replacing the 1.5k-line tool-registration.ts" },
+      { type: "added", text: "Grouped CLI help — `qring --help` now renders commands under nine glyph-prefixed sections with dimmed fallback for ungrouped commands" },
+      { type: "added", text: "docs/cli-mcp-parity.md — full CLI ↔ MCP mapping, shared behavior notes, and remaining CLI-only / MCP-only gaps" },
+      { type: "added", text: "New tests — keyring-lifecycle, ssrf-jit, and an approval-tamper test for workspace/sessionId HMAC coverage (164 tests across 24 files)" },
+      { type: "security", text: "Approval HMAC widened to cover `workspace` and `sessionId`; forged or tampered bindings are now rejected and marked `tampered`" },
+      { type: "security", text: "Approval HMAC verification uses `crypto.timingSafeEqual` on fixed-length hex digests to reduce timing leakage" },
+      { type: "security", text: "~/.config/q-ring/ is created with explicit mode 0o700 for the HMAC secret and approvals registry" },
+      { type: "security", text: "JIT HTTP SSRF fails closed on DNS errors and blocks non-http(s) URLs; private-IP resolution check hardened" },
+      { type: "security", text: "Teleport AES-GCM now uses the recommended 12-byte IV for new bundles (unpacking unchanged)" },
+      { type: "security", text: "entanglement.json and hooks.json writes use mode 0o600; shell hooks switched from exec() to execFile() with bounded stdout buffer" },
+      { type: "changed", text: "Renamed httpRequest_ → httpRequest across utils and call sites; node:http request imported as httpRequestPlain to clear the shadowing" },
+      { type: "changed", text: "`qring get` default output is JSON; `--raw` restores legacy stdout-only value. MCP get_secret / list_secrets / tunnel_* / agent_recall now return structured JSON text" },
+      { type: "fixed", text: "policy.secrets enforced on setSecret; JIT envelope refresh uses a cross-process file lock under ~/.config/q-ring/jit-locks/; queryAudit capped to last 12MB" },
+      { type: "fixed", text: "Removed dead src/services/types.ts and the `void listSecrets;` tree-shake workaround; cleaned up unused parameters to keep --noUnusedParameters green" },
+    ],
+  },
+  {
     version: "0.9.9",
     date: "2026-03-25",
     highlights: [

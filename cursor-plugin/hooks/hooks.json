@@ -3,12 +3,17 @@
   "hooks": {
     "afterFileEdit": [
       {
-        "command": "Scan the edited file for hardcoded secrets using the lint_files MCP tool. If secrets are found, warn the user and offer to auto-fix."
+        "command": "If the edited file matches source-like extensions (.ts, .tsx, .js, .jsx, .mjs, .cjs, .py, .go, .rs, .rb, .java, .kt, .md, .json, .yaml, .yml, .env, or .env.*), call the lint_files MCP tool for that path. If hardcoded secrets are found, warn the user and offer to auto-fix. Skip binary assets and lockfiles."
       }
     ],
     "sessionStart": [
       {
         "command": "Call get_project_context via the q-ring MCP to understand the project's secret landscape. Silently note any expired or stale secrets for later mention."
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "If the shell command appears to stage, commit, or print .env or .env.* files, remind the user to import secrets with import_dotenv / qring CLI and to run scan_codebase_for_secrets on the repo before sharing output."
       }
     ]
   }

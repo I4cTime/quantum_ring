@@ -12,12 +12,13 @@ import {
   createDecipheriv,
   pbkdf2Sync,
 } from "node:crypto";
+import { z } from "zod";
 
 const ALGORITHM = "aes-256-gcm";
 const KEY_LENGTH = 32;
-const IV_LENGTH = 16;
+/** NIST / OpenSSL recommendation for AES-GCM (96-bit nonce). */
+const IV_LENGTH = 12;
 const SALT_LENGTH = 32;
-const TAG_LENGTH = 16;
 const PBKDF2_ITERATIONS = 100000;
 
 export interface TeleportBundle {
@@ -42,6 +43,28 @@ export interface TeleportPayload {
   exportedAt: string;
   exportedBy?: string;
 }
+
+export const TeleportBundleSchema = z.object({
+  v: z.literal(1),
+  data: z.string(),
+  salt: z.string(),
+  iv: z.string(),
+  tag: z.string(),
+  createdAt: z.string(),
+  count: z.number(),
+});
+
+export const TeleportPayloadSchema = z.object({
+  secrets: z.array(
+    z.object({
+      key: z.string(),
+      value: z.string(),
+      scope: z.string().optional(),
+    }),
+  ),
+  exportedAt: z.string(),
+  exportedBy: z.string().optional(),
+});
 
 function deriveKey(passphrase: string, salt: Buffer): Buffer {
   return pbkdf2Sync(passphrase, salt, PBKDF2_ITERATIONS, KEY_LENGTH, "sha512");
@@ -91,12 +114,27 @@ export function teleportUnpack(
   encoded: string,
   passphrase: string,
 ): TeleportPayload {
-  const bundleJson = Buffer.from(encoded, "base64").toString("utf8");
-  const bundle: TeleportBundle = JSON.parse(bundleJson);
-
-  if (bundle.v !== 1) {
-    throw new Error(`Unsupported teleport bundle version: ${bundle.v}`);
+  let bundleJson: string;
+  try {
+    bundleJson = Buffer.from(encoded, "base64").toString("utf8");
+  } catch {
+    throw new Error("ERR_TELEPORT_CORRUPT: invalid base64 bundle");
   }
+
+  let rawBundle: unknown;
+  try {
+    rawBundle = JSON.parse(bundleJson);
+  } catch {
+    throw new Error("ERR_TELEPORT_CORRUPT: bundle is not valid JSON");
+  }
+
+  const parsedBundle = TeleportBundleSchema.safeParse(rawBundle);
+  if (!parsedBundle.success) {
+    throw new Error(
+      `ERR_TELEPORT_CORRUPT: invalid bundle shape (${parsedBundle.error.message})`,
+    );
+  }
+  const bundle = parsedBundle.data;
 
   const salt = Buffer.from(bundle.salt, "base64");
   const iv = Buffer.from(bundle.iv, "base64");
@@ -107,10 +145,28 @@ export function teleportUnpack(
   const decipher = createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(tag);
 
-  const decrypted = Buffer.concat([
-    decipher.update(encrypted),
-    decipher.final(),
-  ]);
+  let decrypted: Buffer;
+  try {
+    decrypted = Buffer.concat([
+      decipher.update(encrypted),
+      decipher.final(),
+    ]);
+  } catch {
+    throw new Error("ERR_TELEPORT_BAD_PASSPHRASE: decryption failed (wrong passphrase or corrupt data)");
+  }
 
-  return JSON.parse(decrypted.toString("utf8"));
+  let rawPayload: unknown;
+  try {
+    rawPayload = JSON.parse(decrypted.toString("utf8"));
+  } catch {
+    throw new Error("ERR_TELEPORT_CORRUPT: decrypted payload is not valid JSON");
+  }
+
+  const payload = TeleportPayloadSchema.safeParse(rawPayload);
+  if (!payload.success) {
+    throw new Error(
+      `ERR_TELEPORT_CORRUPT: invalid payload (${payload.error.message})`,
+    );
+  }
+  return payload.data;
 }

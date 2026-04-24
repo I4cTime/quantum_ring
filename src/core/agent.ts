@@ -10,13 +10,12 @@
  * Designed to run as `qring agent` or be invoked by the MCP server.
  */
 
-import { listSecrets, getEnvelope, setSecret, type KeyringOptions } from "./keyring.js";
-import { checkDecay, type QuantumEnvelope } from "./envelope.js";
-import { detectAnomalies, logAudit, queryAudit } from "./observer.js";
+import { listSecrets, setSecret } from "./keyring.js";
+import { checkDecay } from "./envelope.js";
+import { detectAnomalies, logAudit } from "./observer.js";
 import { generateSecret } from "./noise.js";
-import { findEntangled } from "./entanglement.js";
 import { fireHooks } from "./hooks.js";
-import { c, SYMBOLS, decayIndicator } from "../utils/colors.js";
+import { c, SYMBOLS } from "../utils/colors.js";
 
 export interface AgentConfig {
   /** Check interval in seconds (default: 60) */

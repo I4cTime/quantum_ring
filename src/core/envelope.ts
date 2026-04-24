@@ -6,6 +6,8 @@
  * TTL/expiry (decay), entanglement links, and access tracking (observer).
  */
 
+import { z } from "zod";
+
 export type Environment = string; // "dev" | "staging" | "prod" | custom
 
 export interface EntanglementLink {
@@ -63,6 +65,40 @@ export interface QuantumEnvelope {
   meta: SecretMetadata;
 }
 
+const EntanglementLinkSchema = z.object({
+  service: z.string(),
+  key: z.string(),
+});
+
+const SecretMetadataSchema = z.object({
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  expiresAt: z.string().optional(),
+  ttlSeconds: z.number().optional(),
+  description: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  entangled: z.array(EntanglementLinkSchema).optional(),
+  accessCount: z.number(),
+  lastAccessedAt: z.string().optional(),
+  ephemeral: z.boolean().optional(),
+  rotationFormat: z.string().optional(),
+  rotationPrefix: z.string().optional(),
+  provider: z.string().optional(),
+  validationUrl: z.string().optional(),
+  requiresApproval: z.boolean().optional(),
+  jitProvider: z.string().optional(),
+  jitExpiresAt: z.string().optional(),
+});
+
+/** Runtime validation for persisted envelopes (forward-compatible unknown meta fields stripped). */
+export const QuantumEnvelopeSchema = z.object({
+  v: z.literal(1),
+  value: z.string().optional(),
+  states: z.record(z.string(), z.string()).optional(),
+  defaultEnv: z.string().optional(),
+  meta: SecretMetadataSchema,
+});
+
 export function createEnvelope(
   value: string,
   opts?: Partial<Pick<QuantumEnvelope, "states" | "defaultEnv">> & {
@@ -110,9 +146,10 @@ export function createEnvelope(
 
 export function parseEnvelope(raw: string): QuantumEnvelope | null {
   try {
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === "object" && parsed.v === 1) {
-      return parsed as QuantumEnvelope;
+    const parsed: unknown = JSON.parse(raw);
+    const r = QuantumEnvelopeSchema.safeParse(parsed);
+    if (r.success) {
+      return r.data as QuantumEnvelope;
     }
   } catch {
     // Not a quantum envelope - legacy raw string
@@ -194,6 +231,17 @@ export function checkDecay(envelope: QuantumEnvelope): DecayStatus {
   const now = Date.now();
   const expires = new Date(envelope.meta.expiresAt).getTime();
   const created = new Date(envelope.meta.createdAt).getTime();
+
+  if (!Number.isFinite(expires) || !Number.isFinite(created)) {
+    return {
+      isExpired: true,
+      isStale: true,
+      lifetimePercent: 100,
+      secondsRemaining: null,
+      timeRemaining: "invalid date",
+    };
+  }
+
   const totalLifetime = expires - created;
   const elapsed = now - created;
   const remaining = expires - now;

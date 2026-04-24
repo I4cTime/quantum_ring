@@ -1,6 +1,6 @@
 import { describe, it, expect, afterAll } from "vitest";
 import { lintFiles } from "../../core/linter.js";
-import { writeFileSync, readFileSync, mkdirSync, rmSync } from "node:fs";
+import { writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 

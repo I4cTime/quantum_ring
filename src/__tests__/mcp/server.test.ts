@@ -76,12 +76,11 @@ describe("createMcpServer", () => {
   it(`registers all ${EXPECTED_TOOLS.length} expected tools`, () => {
     const server = createMcpServer();
     const names = getRegisteredToolNames(server);
-
-    if (names.length === 0) {
-      const allKeys = Object.getOwnPropertyNames(server);
-      expect.soft(names.length, `Could not find tools registry. Server keys: ${allKeys.join(", ")}`).toBeGreaterThan(0);
-      return;
-    }
+    const allKeys = Object.getOwnPropertyNames(server);
+    expect(
+      names.length,
+      `Could not find tools registry on McpServer. Server keys: ${allKeys.join(", ")}`,
+    ).toBeGreaterThan(0);
 
     expect(names.length).toBe(EXPECTED_TOOLS.length);
 
@@ -93,8 +92,7 @@ describe("createMcpServer", () => {
   it("has no unexpected tools registered", () => {
     const server = createMcpServer();
     const names = getRegisteredToolNames(server);
-
-    if (names.length === 0) return;
+    expect(names.length).toBeGreaterThan(0);
 
     for (const name of names) {
       expect(

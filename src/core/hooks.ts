@@ -8,9 +8,9 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { homedir } from "node:os";
-import { exec, spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { httpRequest_ } from "../utils/http-request.js";
+import { httpRequest } from "../utils/http-request.js";
 import { logAudit } from "./observer.js";
 import { checkSSRF } from "./ssrf.js";
 
@@ -76,7 +76,9 @@ function loadRegistry(): HookRegistry {
 }
 
 function saveRegistry(registry: HookRegistry): void {
-  writeFileSync(getRegistryPath(), JSON.stringify(registry, null, 2));
+  writeFileSync(getRegistryPath(), JSON.stringify(registry, null, 2), {
+    mode: 0o600,
+  });
 }
 
 export function registerHook(
@@ -152,6 +154,17 @@ function matchesHook(
   return true;
 }
 
+/** pgrep -f pattern: allow only literals safe from regex/shell metacharacters. */
+const SAFE_PGREP_NAME = /^[a-zA-Z0-9._:/-]{1,256}$/;
+
+function shellRunner(): { file: string; args: string[] } {
+  if (process.platform === "win32") {
+    const comspec = process.env.ComSpec ?? "cmd.exe";
+    return { file: comspec, args: ["/d", "/s", "/c"] };
+  }
+  return { file: "/bin/sh", args: ["-c"] };
+}
+
 function executeShell(command: string, payload: HookPayload): Promise<HookResult> {
   return new Promise((resolve) => {
     const env = {
@@ -161,13 +174,33 @@ function executeShell(command: string, payload: HookPayload): Promise<HookResult
       QRING_HOOK_SCOPE: payload.scope,
     };
 
-    exec(command, { timeout: 30000, env }, (err, stdout, stderr) => {
-      if (err) {
-        resolve({ hookId: "", success: false, message: `Shell error: ${err.message}` });
-      } else {
-        resolve({ hookId: "", success: true, message: stdout.trim() || "OK" });
-      }
-    });
+    const { file, args } = shellRunner();
+    execFile(
+      file,
+      [...args, command],
+      {
+        timeout: 30000,
+        env,
+        windowsHide: true,
+        maxBuffer: 4 * 1024 * 1024,
+        encoding: "utf8",
+      },
+      (err, stdout) => {
+        if (err) {
+          resolve({
+            hookId: "",
+            success: false,
+            message: `Shell error: ${err.message}`,
+          });
+        } else {
+          resolve({
+            hookId: "",
+            success: true,
+            message: (stdout ?? "").trim() || "OK",
+          });
+        }
+      },
+    );
   });
 }
 
@@ -186,7 +219,7 @@ async function executeHttp(url: string, payload: HookPayload): Promise<HookResul
 
   try {
     const body = JSON.stringify(payload);
-    const res = await httpRequest_({
+    const res = await httpRequest({
       url,
       method: "POST",
       headers: {
@@ -215,38 +248,80 @@ function executeSignal(
   signal: string = "SIGHUP",
 ): Promise<HookResult> {
   return new Promise((resolve) => {
-    const pid = parseInt(target, 10);
-    if (!isNaN(pid)) {
+    const trimmed = target.trim();
+    if (/^\d+$/.test(trimmed)) {
+      const pid = parseInt(trimmed, 10);
       try {
         process.kill(pid, signal as NodeJS.Signals);
-        resolve({ hookId: "", success: true, message: `Signal ${signal} sent to PID ${pid}` });
+        resolve({
+          hookId: "",
+          success: true,
+          message: `Signal ${signal} sent to PID ${pid}`,
+        });
       } catch (err) {
-        resolve({ hookId: "", success: false, message: `Signal error: ${err instanceof Error ? err.message : String(err)}` });
+        resolve({
+          hookId: "",
+          success: false,
+          message: `Signal error: ${err instanceof Error ? err.message : String(err)}`,
+        });
       }
       return;
     }
 
-    const child = spawn("pgrep", ["-f", target], { timeout: 5000, stdio: ["ignore", "pipe", "pipe"] });
-      let stdout = "";
-      child.stdout.on("data", (d: Buffer) => { stdout += d.toString(); });
-      child.on("close", (code) => {
-        if (code !== 0 || !stdout.trim()) {
-          resolve({ hookId: "", success: false, message: `Process "${target}" not found` });
-          return;
-        }
-        const pids = stdout.trim().split("\n").map((p) => parseInt(p.trim(), 10)).filter((p) => !isNaN(p));
-        let sent = 0;
-        for (const p of pids) {
-          try {
-            process.kill(p, signal as NodeJS.Signals);
-            sent++;
-          } catch { /* ignore dead PIDs */ }
-        }
-        resolve({ hookId: "", success: sent > 0, message: `Signal ${signal} sent to ${sent} process(es)` });
+    if (!SAFE_PGREP_NAME.test(trimmed)) {
+      resolve({
+        hookId: "",
+        success: false,
+        message:
+          'Signal target must be a numeric PID, or a process name matching /^[a-zA-Z0-9._:/-]{1,256}$/ (no spaces or shell metacharacters).',
       });
-      child.on("error", () => {
-        resolve({ hookId: "", success: false, message: `Process "${target}" not found` });
+      return;
+    }
+
+    const child = spawn("pgrep", ["-f", trimmed], {
+      timeout: 5000,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    child.stdout.on("data", (d: Buffer) => {
+      stdout += d.toString();
+    });
+    child.on("close", (code) => {
+      if (code !== 0 || !stdout.trim()) {
+        resolve({
+          hookId: "",
+          success: false,
+          message: `Process "${trimmed}" not found`,
+        });
+        return;
+      }
+      const pids = stdout
+        .trim()
+        .split("\n")
+        .map((p) => parseInt(p.trim(), 10))
+        .filter((p) => !isNaN(p));
+      let sent = 0;
+      for (const p of pids) {
+        try {
+          process.kill(p, signal as NodeJS.Signals);
+          sent++;
+        } catch {
+          /* ignore dead PIDs */
+        }
+      }
+      resolve({
+        hookId: "",
+        success: sent > 0,
+        message: `Signal ${signal} sent to ${sent} process(es)`,
       });
+    });
+    child.on("error", () => {
+      resolve({
+        hookId: "",
+        success: false,
+        message: `Process "${trimmed}" not found`,
+      });
+    });
   });
 }
 

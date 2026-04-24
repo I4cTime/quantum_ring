@@ -69,6 +69,8 @@ Call `register_hook` to set up notifications when secrets change:
 - HTTP hook: notify a deployment webhook
 - Signal hook: send SIGHUP to a running process
 
+Use **`list_hooks`** to inspect the registry and **`remove_hook`** to delete entries by id. (CLI-only: `qring hook enable|disable|test` for lifecycle control.)
+
 ### 7. Configure policy
 
 Guide the user through the `policy` section of `.q-ring.json`:
