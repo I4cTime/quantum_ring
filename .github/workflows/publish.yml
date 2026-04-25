@@ -26,16 +26,21 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          # Node 24 bundles npm 11.5+, which is the minimum required for
+          # OIDC trusted publishing on npmjs.com. Node 22 ships npm 10.x,
+          # which silently fails with a misleading `E404 Not Found` when
+          # the registry rejects the OIDC token (this blocked the
+          # v0.10.1 publish even after the trusted publisher was
+          # configured). See:
+          # https://docs.npmjs.com/trusted-publishers
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
 
       # Intentionally NOT running `npm install -g npm@latest` here:
-      # on the Node 22 runner image it currently fails with
+      # on the runner image it has been observed to fail with
       # "Cannot find module 'promise-retry'" during npm's own
-      # self-upgrade (broke v0.9.9 and v0.10.0 publish runs). The
-      # bundled npm in setup-node@v4 is recent enough for `npm publish
-      # --provenance --access public`; pin a specific version here only
-      # if a future npm feature requires it.
+      # self-upgrade. Node 24's bundled npm is already >= 11.5.1, so
+      # no upgrade is needed for trusted publishing or provenance.
 
       - uses: pnpm/action-setup@v4
         with:
