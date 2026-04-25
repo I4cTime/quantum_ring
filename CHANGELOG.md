@@ -4,7 +4,10 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-04-25
+
 ### Changed
+- **Marketing site overhauled (`web/`)** — replaced the hand-rolled landing/docs/changelog with a full HeroUI v3 + HeroUI Pro implementation backed by Tailwind v4 and `lucide-react`. New surfaces: hero with social-card art and install picker, TrustStrip KPIs (locale-stable), WhyQRing comparison, IntegrationsCarousel, LiveDemo terminal driving a global ⌘K CommandPalette, AgentMode, CursorPlugin showcase, FAQ, FreeCallout, FinalCta. Docs page gains a pinned Floating TOC with manual scroll-spy and a copy-to-clipboard MCP prompt cookbook. Navbar contrast lifted, custom hash navigation handles same-page anchors and home-link scroll-to-top in App Router. Background tokens darkened for better text contrast over the WebGL backdrop.
 - **Status dashboard rebuilt** — `qring status` (and the `status_dashboard` MCP tool) now serves a denser, more useful live page. New surfaces:
   - **KPI strip** — total secrets, detected env, protected count, active approvals, hooks (enabled / total), 24-hour read & write counts, denied-action count, and live anomaly count.
   - **Manifest panel** — declared / required / missing / expired / stale keys from `.q-ring.json`.
