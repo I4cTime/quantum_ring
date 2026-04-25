@@ -13,9 +13,11 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
-    version: "Unreleased",
-    date: "",
+    version: "0.11.0",
+    date: "2026-04-25",
     highlights: [
+      { type: "changed", text: "Marketing site overhauled — the `web/` landing, docs, and changelog were rebuilt on HeroUI v3 + HeroUI Pro with Tailwind v4 and `lucide-react`. New surfaces include a hero with the social-card art and install picker, locale-stable TrustStrip KPIs, the WhyQRing comparison, IntegrationsCarousel, LiveDemo terminal, a global ⌘K command palette, AgentMode, the CursorPlugin showcase, FAQ, FreeCallout, and FinalCta" },
+      { type: "changed", text: "Docs page gains a pinned floating table of contents with manual scroll-spy and a copy-to-clipboard MCP prompt cookbook; navbar contrast was lifted and same-page hash navigation + home-link scroll-to-top now work correctly under the App Router" },
       { type: "changed", text: "Status dashboard rebuilt — `qring status` now serves a denser page with a KPI strip (secrets, env, protected, approvals, hooks, 24h reads/writes, denied actions, anomalies), a sortable + searchable secrets table, and dedicated panels for manifest gaps, governance policy, active approvals (with tamper / expiry state), registered hooks, and agent memory" },
       { type: "changed", text: "Audit feed gained action chips (read/write/delete/export), source chips (cli/mcp/hook/agent), and a free-text filter; top bar adds pause / refresh / JSON controls plus a relative `updated Ns ago` timestamp that keeps ticking while paused" },
       { type: "changed", text: "Snapshot payload (`/api/status` + SSE) now also includes version, projectPath, scopes, protectedCount, manifest, policy, approvals, hooks, memoryKeys, and auditMetrics (action / source counts, top read keys, total events in the last 24h)" },
