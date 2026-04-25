@@ -42,7 +42,7 @@ export default function Hero() {
 
   return (
     <section
-      className="relative min-h-[88vh] flex flex-col items-center justify-center text-center px-6 pt-28 pb-16 overflow-hidden"
+      className="relative min-h-[88vh] flex flex-col items-center justify-center text-center px-6 pt-28 pb-32 sm:pb-36 overflow-hidden"
       id="hero"
     >
       <div className="absolute w-[700px] h-[700px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[radial-gradient(circle,var(--color-accent-dim)_0%,transparent_70%)] blur-[80px] pointer-events-none z-0 animate-pulse-glow" />
@@ -55,7 +55,7 @@ export default function Hero() {
         >
           <Sparkles className="size-3.5 text-accent-bright" aria-hidden />
           <span className="ml-1.5 font-[family-name:var(--font-mono)] text-[0.7rem] uppercase tracking-widest">
-            v0.10 · MCP-native · AGPL-3.0
+            v0.11 · MCP-native · AGPL-3.0
           </span>
         </Chip>
 
@@ -163,9 +163,9 @@ export default function Hero() {
 
       </div>
 
-      <div className="absolute bottom-6 flex flex-col items-center gap-2 text-text-dim text-xs uppercase tracking-widest animate-bob-down">
+      <div className="pointer-events-none absolute bottom-4 left-1/2 z-2 flex -translate-x-1/2 flex-col items-center gap-1.5 text-text-dim text-[0.65rem] uppercase tracking-widest animate-bob-down">
         <span>scroll</span>
-        <Mouse className="w-4 h-6" aria-hidden />
+        <Mouse className="w-4 h-5" aria-hidden />
       </div>
     </section>
   );
