@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.10.1] — 2026-04-24
+
+### Fixed
+- **Publish workflow** — removed the `npm install -g npm@latest` bootstrap step that crashed with `Cannot find module 'promise-retry'` on the Node 22 runner image. The bundled npm from `setup-node@v4` is sufficient for `npm publish --provenance --access public`. This bug had silently blocked the v0.9.9 and v0.10.0 publish runs (both were tagged on GitHub but never reached npm).
+- **Publish workflow** — added a `workflow_dispatch` trigger with an optional `ref` input so a stuck release can be re-published from the Actions tab without re-tagging.
+
+### Notes
+- Functional code is unchanged from v0.10.0; the bump exists solely to ship a new npm artifact through the now-fixed pipeline. v0.10.0's tag and GitHub Release stay in place for traceability.
+
 ## [0.10.0] — 2026-04-24
 
 ### Security
