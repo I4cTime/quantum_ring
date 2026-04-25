@@ -189,7 +189,7 @@ export function registerToolingTools(server: McpServer): void {
 
   server.tool(
     "status_dashboard",
-    "[dashboard] Launch the quantum status dashboard — a local web page showing live health, decay timers, superposition states, entanglement graph, tunnels, audit log, and anomaly alerts. Returns the URL to open in a browser.",
+    "[dashboard] Launch the quantum status dashboard — a local SSE-driven web page showing live KPIs (secrets, env, protected, approvals, hooks, 24h reads, anomalies), health summary, environment, .q-ring.json manifest gaps, governance policy summary, sortable searchable secrets table, decay/superposition/entanglement/tunnel cards, active approvals & hooks, agent memory, anomaly alerts, and a filterable 24h audit feed. Returns the URL to open in a browser. Never exposes secret values.",
     {
       port: z.number().optional().default(9876).describe("Port to serve on"),
     },

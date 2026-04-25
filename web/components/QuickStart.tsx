@@ -1,5 +1,5 @@
 import FadeIn from "@/components/motion/FadeIn";
-import CopyableTerminal from "@/components/CopyableTerminal";
+import TerminalCard from "@/components/TerminalCard";
 
 export default function QuickStart() {
   return (
@@ -16,7 +16,7 @@ export default function QuickStart() {
           </p>
         </FadeIn>
         <FadeIn delay={0.2}>
-          <CopyableTerminal title="~ / terminal">
+          <TerminalCard title="~ / terminal">
             <pre>
               <span className="text-[#555]">
                 # Store a secret (prompts securely if value is omitted)
@@ -50,7 +50,7 @@ export default function QuickStart() {
               <span className="text-green font-bold">$</span>{" "}
               <span className="text-accent-bright font-medium">qring health</span>
             </pre>
-          </CopyableTerminal>
+          </TerminalCard>
         </FadeIn>
       </div>
     </section>

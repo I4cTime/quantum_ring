@@ -185,13 +185,15 @@ export default function WebGLBackground() {
       );
       composer.addPass(bloomPass);
 
-      const clock = new THREE.Clock();
+      const timer = new THREE.Timer();
+      timer.connect(document);
       let animId: number;
 
-      function animate() {
+      function animate(timestamp?: number) {
         if (disposed) return;
         animId = requestAnimationFrame(animate);
-        uniforms.uTime.value = clock.getElapsedTime();
+        timer.update(timestamp);
+        uniforms.uTime.value = timer.getElapsed();
         composer.render();
       }
 
@@ -209,6 +211,7 @@ export default function WebGLBackground() {
         disposed = true;
         cancelAnimationFrame(animId);
         window.removeEventListener("resize", onResize);
+        timer.dispose();
         renderer.dispose();
         geometry.dispose();
         material.dispose();

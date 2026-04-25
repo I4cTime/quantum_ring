@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Outfit } from "next/font/google";
 import "./globals.css";
+import Providers from "./providers";
 
 const outfit = Outfit({
   subsets: ["latin"],
@@ -52,13 +53,24 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const isDev = process.env.NODE_ENV !== "production";
+  const scriptSrc = isDev
+    ? "'self' 'unsafe-inline' 'unsafe-eval'"
+    : "'self' 'unsafe-inline'";
+  const connectSrc = isDev ? "'self' ws: http: https:" : "'self'";
+  const csp = [
+    "default-src 'self'",
+    `script-src ${scriptSrc}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "font-src 'self' https://fonts.gstatic.com",
+    `connect-src ${connectSrc}`,
+  ].join("; ");
+
   return (
     <html lang="en" className={`${outfit.variable} ${jetbrainsMono.variable}`}>
       <head>
-        <meta
-          httpEquiv="Content-Security-Policy"
-          content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com; connect-src 'self'"
-        />
+        <meta httpEquiv="Content-Security-Policy" content={csp} />
       </head>
       <body>
         <a
@@ -67,26 +79,8 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <SvgGradientDefs />
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
-  );
-}
-
-function SvgGradientDefs() {
-  return (
-    <svg
-      style={{ width: 0, height: 0, position: "absolute" }}
-      aria-hidden="true"
-      focusable="false"
-    >
-      <defs>
-        <linearGradient id="neon-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#00D1FF" />
-          <stop offset="100%" stopColor="#a855f7" />
-        </linearGradient>
-      </defs>
-    </svg>
   );
 }

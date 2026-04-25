@@ -1,0 +1,546 @@
+export type CliRefCommand = {
+  command: string;
+  description: string;
+  options: string[];
+  examples: string[];
+};
+
+export const CLI_REFERENCE: CliRefCommand[] = [
+  {
+    command: "set <key> [value]",
+    description: "Store a secret (with optional quantum metadata)",
+    options: [
+      "-g, --global",
+      "-p, --project",
+      "--team <id>",
+      "--org <id>",
+      "--project-path <path>",
+      "-e, --env <env>",
+      "--ttl <seconds>",
+      "--expires <iso>",
+      "--description <desc>",
+      "--tags <tags>",
+      "--rotation-format <format>",
+      "--rotation-prefix <prefix>",
+      "--requires-approval",
+      "--jit-provider <provider>",
+    ],
+    examples: [
+      'qring set OPENAI_API_KEY "sk-..." --project --env dev --tags ai,backend',
+      "qring set DB_PASSWORD --ttl 3600 --rotation-format password --requires-approval",
+    ],
+  },
+  {
+    command: "get <key>",
+    description: "Retrieve a secret (collapses superposition if needed)",
+    options: [
+      "-g, --global",
+      "-p, --project",
+      "--team <id>",
+      "--org <id>",
+      "--project-path <path>",
+      "-e, --env <env>",
+    ],
+    examples: ["qring get OPENAI_API_KEY --project --env prod"],
+  },
+  {
+    command: "delete <key> (alias: rm)",
+    description: "Remove a secret from the keyring",
+    options: ["-g, --global", "-p, --project", "--project-path <path>"],
+    examples: ["qring delete LEGACY_TOKEN --project"],
+  },
+  {
+    command: "list (alias: ls)",
+    description: "List all secrets with quantum status indicators",
+    options: [
+      "-g, --global",
+      "-p, --project",
+      "--team <id>",
+      "--org <id>",
+      "--project-path <path>",
+      "--show-decay",
+      "-t, --tag <tag>",
+      "--expired",
+      "--stale",
+      "-f, --filter <pattern>",
+    ],
+    examples: [
+      'qring list --project --tag payments --filter "STRIPE_*" --show-decay',
+    ],
+  },
+  {
+    command: "inspect <key>",
+    description: "Show full quantum state of a secret",
+    options: ["-g, --global", "-p, --project", "--project-path <path>"],
+    examples: ["qring inspect OPENAI_API_KEY --project"],
+  },
+  {
+    command: "export",
+    description: "Export secrets as .env or JSON (collapses superposition)",
+    options: [
+      "-f, --format <format>",
+      "-g, --global",
+      "-p, --project",
+      "--project-path <path>",
+      "-e, --env <env>",
+      "-k, --keys <keys>",
+      "-t, --tags <tags>",
+    ],
+    examples: [
+      "qring export --format env --project --env prod --keys OPENAI_API_KEY,STRIPE_KEY",
+    ],
+  },
+  {
+    command: "import <file>",
+    description: "Import secrets from a .env file",
+    options: [
+      "-g, --global",
+      "-p, --project",
+      "--project-path <path>",
+      "-e, --env <env>",
+      "--skip-existing",
+      "--dry-run",
+    ],
+    examples: ["qring import .env --project --skip-existing"],
+  },
+  {
+    command: "check",
+    description: "Validate project secrets against .q-ring.json manifest",
+    options: ["--project-path <path>"],
+    examples: ["qring check --project-path ."],
+  },
+  {
+    command: "validate [key]",
+    description: "Test if a secret is actually valid with its target service",
+    options: [
+      "-g, --global",
+      "-p, --project",
+      "--project-path <path>",
+      "--provider <name>",
+      "--all",
+      "--manifest",
+      "--list-providers",
+    ],
+    examples: [
+      "qring validate OPENAI_API_KEY --project",
+      "qring validate --all --manifest --project",
+    ],
+  },
+  {
+    command: "exec <command...>",
+    description:
+      "Run a command with secrets injected into its environment (output auto-redacted)",
+    options: [
+      "-g, --global",
+      "-p, --project",
+      "--project-path <path>",
+      "-e, --env <env>",
+      "-k, --keys <keys>",
+      "-t, --tags <tags>",
+      "--profile <name>",
+    ],
+    examples: [
+      'qring exec --project --profile restricted --keys OPENAI_API_KEY -- node "scripts/smoke.js"',
+    ],
+  },
+  {
+    command: "scan [dir]",
+    description: "Scan a codebase for hardcoded secrets",
+    options: ["--fix", "-g, --global", "-p, --project", "--project-path <path>"],
+    examples: ["qring scan src --fix --project"],
+  },
+  {
+    command: "lint <files...>",
+    description:
+      "Lint specific files for hardcoded secrets (with optional auto-fix)",
+    options: ["--fix", "-g, --global", "-p, --project", "--project-path <path>"],
+    examples: ["qring lint src/config.ts src/client.ts --fix --project"],
+  },
+  {
+    command: "context (alias: describe)",
+    description:
+      "Show safe, redacted project context for AI agents (no secret values exposed)",
+    options: [
+      "-g, --global",
+      "-p, --project",
+      "--project-path <path>",
+      "--json",
+    ],
+    examples: ["qring context --project --json"],
+  },
+  {
+    command: "remember <key> <value>",
+    description:
+      "Store a key-value pair in encrypted agent memory (persists across sessions)",
+    options: [],
+    examples: [
+      'qring remember deployment_note "rotate Stripe key after release"',
+    ],
+  },
+  {
+    command: "recall [key]",
+    description: "Retrieve a value from agent memory, or list all keys",
+    options: [],
+    examples: ["qring recall deployment_note", "qring recall"],
+  },
+  {
+    command: "forget <key>",
+    description: "Delete a key from agent memory",
+    options: ["--all"],
+    examples: ["qring forget deployment_note"],
+  },
+  {
+    command: "approve <key>",
+    description:
+      "Grant a scoped, reasoned, HMAC-verified approval token for MCP secret access",
+    options: [
+      "-g, --global",
+      "-p, --project",
+      "--project-path <path>",
+      "--for <seconds>",
+      "--reason <text>",
+      "--revoke",
+      "--list",
+    ],
+    examples: [
+      'qring approve OPENAI_API_KEY --project --for 1800 --reason "temporary agent read"',
+    ],
+  },
+  {
+    command: "approvals",
+    description: "List all approval tokens with verification status",
+    options: [],
+    examples: ["qring approvals"],
+  },
+  {
+    command: "hook:install",
+    description: "Install a git pre-commit hook that scans for hardcoded secrets",
+    options: ["--project-path <path>"],
+    examples: ["qring hook:install --project-path ."],
+  },
+  {
+    command: "hook:uninstall",
+    description: "Remove the q-ring pre-commit hook",
+    options: ["--project-path <path>"],
+    examples: ["qring hook:uninstall --project-path ."],
+  },
+  {
+    command: "hook:run",
+    description: "Run the pre-commit secret scan (called by the git hook)",
+    options: [],
+    examples: ["qring hook:run"],
+  },
+  {
+    command: "wizard <name>",
+    description:
+      "Set up a new service integration with secrets, manifest, and hooks",
+    options: [
+      "--keys <keys>",
+      "--provider <provider>",
+      "--tags <tags>",
+      "--hook-exec <cmd>",
+      "-g, --global",
+      "-p, --project",
+      "--project-path <path>",
+    ],
+    examples: [
+      "qring wizard stripe --keys STRIPE_KEY,STRIPE_WEBHOOK_SECRET --provider stripe --tags payments,prod",
+    ],
+  },
+  {
+    command: "analyze",
+    description: "Analyze secret usage patterns and provide optimization suggestions",
+    options: ["-g, --global", "-p, --project", "--project-path <path>"],
+    examples: ["qring analyze --project"],
+  },
+  {
+    command: "env",
+    description: "Show detected environment (wavefunction collapse context)",
+    options: ["--project-path <path>"],
+    examples: ["qring env --project-path ."],
+  },
+  {
+    command: "generate (alias: gen)",
+    description: "Generate a cryptographic secret (quantum noise)",
+    options: [
+      "-f, --format <format>",
+      "-l, --length <n>",
+      "--prefix <prefix>",
+      "-s, --save <key>",
+      "-g, --global",
+      "-p, --project",
+      "--project-path <path>",
+    ],
+    examples: [
+      "qring generate --format api-key --prefix sk- --save OPENAI_API_KEY --project",
+    ],
+  },
+  {
+    command: "entangle <sourceKey> <targetKey>",
+    description: "Link two secrets — rotating one updates the other",
+    options: [
+      "-g, --global",
+      "--source-project <path>",
+      "--target-project <path>",
+    ],
+    examples: [
+      "qring entangle API_KEY API_KEY_BACKUP --source-project . --target-project ../worker",
+    ],
+  },
+  {
+    command: "disentangle <sourceKey> <targetKey>",
+    description: "Unlink two entangled secrets",
+    options: [
+      "-g, --global",
+      "--source-project <path>",
+      "--target-project <path>",
+    ],
+    examples: [
+      "qring disentangle API_KEY API_KEY_BACKUP --source-project . --target-project ../worker",
+    ],
+  },
+  {
+    command: "tunnel create <value>",
+    description: "Create a tunneled secret (returns tunnel ID)",
+    options: ["--ttl <seconds>", "--max-reads <n>"],
+    examples: ['qring tunnel create "temp-token" --ttl 300 --max-reads 1'],
+  },
+  {
+    command: "tunnel read <id>",
+    description: "Read a tunneled secret (may self-destruct)",
+    options: [],
+    examples: ["qring tunnel read tu_abc123"],
+  },
+  {
+    command: "tunnel destroy <id>",
+    description: "Destroy a tunneled secret immediately",
+    options: [],
+    examples: ["qring tunnel destroy tu_abc123"],
+  },
+  {
+    command: "tunnel list (alias: tunnel ls)",
+    description: "List active tunnels",
+    options: [],
+    examples: ["qring tunnel list"],
+  },
+  {
+    command: "teleport pack",
+    description: "Pack secrets into an encrypted bundle",
+    options: [
+      "-k, --keys <keys>",
+      "-g, --global",
+      "-p, --project",
+      "--project-path <path>",
+    ],
+    examples: [
+      "qring teleport pack --project --keys OPENAI_API_KEY,STRIPE_KEY > bundle.qring",
+    ],
+  },
+  {
+    command: "teleport unpack [bundle]",
+    description: "Unpack and import secrets from an encrypted bundle",
+    options: [
+      "-g, --global",
+      "-p, --project",
+      "--project-path <path>",
+      "--dry-run",
+    ],
+    examples: [
+      'qring teleport unpack "$(cat bundle.qring)" --project --dry-run',
+    ],
+  },
+  {
+    command: "audit",
+    description: "View the audit log (observer effect)",
+    options: [
+      "-k, --key <key>",
+      "-a, --action <action>",
+      "-n, --limit <n>",
+      "--anomalies",
+    ],
+    examples: ["qring audit --key OPENAI_API_KEY --action read --limit 50"],
+  },
+  {
+    command: "audit:verify",
+    description: "Verify the integrity of the audit hash chain",
+    options: [],
+    examples: ["qring audit:verify"],
+  },
+  {
+    command: "audit:export",
+    description: "Export audit events in a portable format",
+    options: [
+      "--since <date>",
+      "--until <date>",
+      "--format <fmt>",
+      "-o, --output <file>",
+    ],
+    examples: [
+      "qring audit:export --since 2026-03-01 --format json -o audit.json",
+    ],
+  },
+  {
+    command: "health",
+    description: "Check the health of all secrets",
+    options: ["-g, --global", "-p, --project", "--project-path <path>"],
+    examples: ["qring health --project"],
+  },
+  {
+    command: "hook add",
+    description: "Register a new hook",
+    options: [
+      "--key <key>",
+      "--key-pattern <pattern>",
+      "--tag <tag>",
+      "--scope <scope>",
+      "--action <actions>",
+      "--exec <command>",
+      "--url <url>",
+      "--signal-target <target>",
+      "--signal-name <signal>",
+      "--description <desc>",
+    ],
+    examples: [
+      'qring hook add --key DB_PASSWORD --action write,rotate --exec "pnpm restart:api"',
+      "qring hook add --tag payments --url https://hooks.example.com/qring --action rotate",
+    ],
+  },
+  {
+    command: "hook list (alias: hook ls)",
+    description: "List all registered hooks",
+    options: [],
+    examples: ["qring hook list"],
+  },
+  {
+    command: "hook remove <id> (alias: hook rm)",
+    description: "Remove a hook by ID",
+    options: [],
+    examples: ["qring hook remove hk_abc123"],
+  },
+  {
+    command: "hook enable <id>",
+    description: "Enable a hook",
+    options: [],
+    examples: ["qring hook enable hk_abc123"],
+  },
+  {
+    command: "hook disable <id>",
+    description: "Disable a hook",
+    options: [],
+    examples: ["qring hook disable hk_abc123"],
+  },
+  {
+    command: "hook test <id>",
+    description: "Dry-run a hook with a mock payload",
+    options: [],
+    examples: ["qring hook test hk_abc123"],
+  },
+  {
+    command: "env:generate",
+    description: "Generate a .env file from the project manifest (.q-ring.json)",
+    options: [
+      "--project-path <path>",
+      "-o, --output <file>",
+      "-e, --env <env>",
+    ],
+    examples: ["qring env:generate --project-path . --env prod -o .env"],
+  },
+  {
+    command: "status",
+    description:
+      "Launch the live status dashboard in your browser — KPIs, secrets table, manifest, policy, approvals, hooks, anomalies, and audit feed (SSE, never shows secret values)",
+    options: ["--port <port>", "--no-open"],
+    examples: ["qring status --port 9876 --no-open"],
+  },
+  {
+    command: "agent",
+    description: "Start the autonomous agent (background monitor)",
+    options: [
+      "-i, --interval <seconds>",
+      "--auto-rotate",
+      "-v, --verbose",
+      "--project-path <paths>",
+      "--once",
+    ],
+    examples: [
+      "qring agent --once --auto-rotate --project-path .,../worker",
+    ],
+  },
+  {
+    command: "rotate <key>",
+    description: "Attempt issuer-native rotation of a secret via its provider",
+    options: [
+      "-g, --global",
+      "-p, --project",
+      "--project-path <path>",
+      "--provider <name>",
+    ],
+    examples: ["qring rotate OPENAI_API_KEY --project --provider openai"],
+  },
+  {
+    command: "ci:validate",
+    description: "CI-oriented batch validation of all secrets (exit code 1 on failure)",
+    options: [
+      "-g, --global",
+      "-p, --project",
+      "--project-path <path>",
+      "--json",
+    ],
+    examples: ["qring ci:validate --project --json"],
+  },
+  {
+    command: "policy",
+    description: "Show project governance policy summary",
+    options: ["--json"],
+    examples: ["qring policy --json"],
+  },
+];
+
+export const CLI_REFERENCE_COUNT = CLI_REFERENCE.length;
+
+export const MCP_PROMPTS: ReadonlyArray<readonly [string, string]> = [
+  ["get_secret", "Retrieve `OPENAI_API_KEY` from project scope for `prod` and return just the raw value."],
+  ["list_secrets", "List project secrets tagged `payments` and show only stale entries matching `STRIPE_*`."],
+  ["set_secret", "Set `STRIPE_SECRET_KEY` in project scope with tags `payments,prod` and a TTL of 86400 seconds."],
+  ["delete_secret", "Delete `LEGACY_TOKEN` from global scope and confirm whether it existed."],
+  ["has_secret", "Check whether `GITHUB_TOKEN` exists in project scope and return true/false."],
+  ["export_secrets", "Export only `OPENAI_API_KEY` and `STRIPE_KEY` as `.env` for `prod`."],
+  ["import_dotenv", "Import this `.env` content into project scope in dry-run mode and report what would change."],
+  ["check_project", "Validate `.q-ring.json` at this path and show missing, stale, and expired required keys."],
+  ["env_generate", "Generate `.env` content from the project manifest for `staging` without writing files."],
+  ["inspect_secret", "Inspect `DB_PASSWORD` and summarize scope, decay state, tags, and entanglement metadata."],
+  ["detect_environment", "Detect current environment for this project path and include the detection source."],
+  ["generate_secret", "Generate an `api-key` with prefix `sk-` and save it as `OPENAI_API_KEY` in project scope."],
+  ["entangle_secrets", "Entangle `API_KEY` in this project with `API_KEY_BACKUP` in another project path."],
+  ["disentangle_secrets", "Remove entanglement between `API_KEY` and `API_KEY_BACKUP` and confirm success."],
+  ["tunnel_create", "Create an ephemeral tunnel value with TTL 300 and maxReads 1, then return the tunnel ID."],
+  ["tunnel_read", "Read tunnel `tu_abc123` once and return value or not-found/expired status."],
+  ["tunnel_list", "List all active tunnels with read counts and time remaining."],
+  ["tunnel_destroy", "Destroy tunnel `tu_abc123` immediately and confirm whether it existed."],
+  ["teleport_pack", "Pack keys `OPENAI_API_KEY` and `STRIPE_KEY` into an encrypted bundle using this passphrase."],
+  ["teleport_unpack", "Unpack this teleport bundle in dry-run mode and list keys and scopes that would be imported."],
+  ["audit_log", "Return last 100 `read` audit events for `OPENAI_API_KEY` in reverse chronological order."],
+  ["detect_anomalies", "Detect anomalies for `OPENAI_API_KEY` and include recommendations."],
+  ["health_check", "Run a project-scope health check and summarize healthy/stale/expired plus anomaly count."],
+  ["validate_secret", "Validate `OPENAI_API_KEY` with provider auto-detection and return provider + latency."],
+  ["list_providers", "List available validation providers with descriptions and known key prefixes."],
+  ["register_hook", "Register an HTTP hook for `DB_PASSWORD` rotate events to this URL with a clear description."],
+  ["list_hooks", "List all registered hooks and include type, match criteria, and enabled status."],
+  ["remove_hook", "Remove hook `hk_abc123` and return a not-found error if it does not exist."],
+  ["exec_with_secrets", "Run `node scripts/smoke.js` with only `OPENAI_API_KEY` injected using restricted profile."],
+  ["scan_codebase_for_secrets", "Scan `./src` for hardcoded secrets and return file, line, key name, and entropy."],
+  ["get_project_context", "Return redacted project context for this path including manifest and recent actions."],
+  ["agent_remember", "Remember the note `rotated Stripe keys after release` under key `release_notes`."],
+  ["agent_recall", "Recall key `release_notes`; if omitted, list all memory keys and update times."],
+  ["agent_forget", "Forget memory key `release_notes` and report whether it was present."],
+  ["lint_files", "Lint these files for hardcoded secrets in fix mode and return structured fix results."],
+  ["analyze_secrets", "Analyze project secrets for unused keys, stale entries, and top read frequency."],
+  ["status_dashboard", "Start the live status dashboard on port 9876 and return the local URL — page surfaces KPIs, manifest gaps, policy posture, approvals, hooks, anomalies, and a filterable 24h audit feed without ever rendering secret values."],
+  ["agent_scan", "Run one agent scan with auto-rotate enabled across these project paths and return report JSON."],
+  ["verify_audit_chain", "Verify audit hash-chain integrity and show first break location if tampering is detected."],
+  ["export_audit", "Export audit events as JSON from 2026-03-01 until now."],
+  ["rotate_secret", "Attempt provider-native rotation for `OPENAI_API_KEY` and store the new value if rotated."],
+  ["ci_validate_secrets", "Run CI batch validation for project scope and return pass/fail summary JSON."],
+  ["check_policy", "Check whether command `npm publish` is allowed by exec policy for this project path."],
+  ["get_policy_summary", "Return governance policy summary for this project, including tool and secret lifecycle rules."],
+];

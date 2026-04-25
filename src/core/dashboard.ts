@@ -10,9 +10,14 @@ import { listSecrets } from "./keyring.js";
 import { checkDecay, type DecayStatus, type QuantumEnvelope } from "./envelope.js";
 import { listEntanglements, type EntanglementPair } from "./entanglement.js";
 import { tunnelList } from "./tunnel.js";
-import { queryAudit, detectAnomalies, type AuditEvent, type AccessAnomaly } from "./observer.js";
-import { collapseEnvironment, type CollapseResult } from "./collapse.js";
+import { queryAudit, detectAnomalies, type AuditEvent, type AccessAnomaly, type AuditAction } from "./observer.js";
+import { collapseEnvironment, readProjectConfig, type CollapseResult } from "./collapse.js";
+import { listHooks, type HookEntry, type HookType } from "./hooks.js";
+import { listApprovals } from "./approval.js";
+import { listMemory } from "./memory.js";
+import { getPolicySummary } from "./policy.js";
 import { getDashboardHtml } from "./dashboard-html.js";
+import { PACKAGE_VERSION } from "../version.js";
 
 export interface SecretSnapshot {
   key: string;
@@ -28,6 +33,14 @@ export interface SecretSnapshot {
   description?: string;
   tags?: string[];
   entangled?: { service: string; key: string }[];
+  /** Validation provider name (e.g. "openai", "stripe") */
+  provider?: string;
+  /** Whether reads require explicit approval via MCP */
+  requiresApproval?: boolean;
+  /** Just-In-Time provisioner name, if any */
+  jitProvider?: string;
+  /** Whether the rotation format is declared on this envelope */
+  hasRotationFormat: boolean;
 }
 
 export interface TunnelSnapshot {
@@ -38,16 +51,124 @@ export interface TunnelSnapshot {
   maxReads?: number;
 }
 
-export interface DashboardSnapshot {
-  timestamp: string;
-  secrets: SecretSnapshot[];
-  health: { healthy: number; stale: number; expired: number; noDecay: number; total: number };
-  entanglements: EntanglementPair[];
-  tunnels: TunnelSnapshot[];
-  audit: AuditEvent[];
-  anomalies: AccessAnomaly[];
-  environment: CollapseResult | null;
+export interface ApprovalSnapshot {
+  id: string;
+  key: string;
+  scope: string;
+  reason: string;
+  grantedBy: string;
+  grantedAt: string;
+  expiresAt: string;
+  /** Seconds remaining until expiry; negative if expired */
+  secondsRemaining: number;
+  /** True if HMAC verifies and not expired */
+  valid: boolean;
+  /** True if HMAC failed (forged/tampered) */
+  tampered: boolean;
 }
+
+export interface HookSnapshot {
+  id: string;
+  type: HookType;
+  description?: string;
+  enabled: boolean;
+  match: HookEntry["match"];
+  /** A short, human-readable summary of the match criteria */
+  matchSummary: string;
+}
+
+export interface ManifestSnapshot {
+  /** Total declared keys in `.q-ring.json` `secrets` */
+  declared: number;
+  /** Number marked `required: true` */
+  required: number;
+  /** Required keys that are missing from project scope */
+  missing: string[];
+  /** Required keys that are present but expired */
+  expired: string[];
+  /** Required keys that are present but stale */
+  stale: string[];
+}
+
+export interface PolicySnapshot {
+  hasMcpPolicy: boolean;
+  hasExecPolicy: boolean;
+  hasSecretPolicy: boolean;
+  /** Counts per restriction so the UI can render at-a-glance dots */
+  counts: {
+    allowTools: number;
+    denyTools: number;
+    deniedKeys: number;
+    deniedTags: number;
+    allowCommands: number;
+    denyCommands: number;
+    requireApprovalForTags: number;
+    requireRotationFormatForTags: number;
+  };
+  maxTtlSeconds?: number;
+  maxRuntimeSeconds?: number;
+}
+
+export interface AuditMetrics {
+  /** Counts grouped by action over the audited window */
+  byAction: Record<AuditAction, number>;
+  /** Counts by source (cli, mcp, agent, etc.) */
+  bySource: Record<string, number>;
+  /** Top accessed keys (read action) over the window */
+  topRead: Array<{ key: string; reads: number }>;
+  /** Total events read for the metrics window */
+  total: number;
+  /** Window covered by the metrics, in seconds */
+  windowSeconds: number;
+}
+
+export interface ScopeBreakdown {
+  global: number;
+  project: number;
+  team: number;
+  org: number;
+}
+
+export interface DashboardSnapshot {
+  /** Snapshot generation timestamp (ISO) */
+  timestamp: string;
+  /** q-ring version that produced the snapshot */
+  version: string;
+  /** Project path in use (for manifest/policy resolution) */
+  projectPath: string;
+  /** All visible secrets (no values) */
+  secrets: SecretSnapshot[];
+  /** Headline counts of secret health */
+  health: { healthy: number; stale: number; expired: number; noDecay: number; total: number };
+  /** Counts per scope */
+  scopes: ScopeBreakdown;
+  /** Secrets that require approval before MCP read */
+  protectedCount: number;
+  /** Active entanglement links */
+  entanglements: EntanglementPair[];
+  /** In-memory tunnels */
+  tunnels: TunnelSnapshot[];
+  /** Recent audit events (most recent first; "list" filtered out) */
+  audit: AuditEvent[];
+  /** Aggregate audit metrics (read counts, top keys, source breakdown) */
+  auditMetrics: AuditMetrics;
+  /** Detected access anomalies */
+  anomalies: AccessAnomaly[];
+  /** Auto-detected environment & detection source */
+  environment: CollapseResult | null;
+  /** `.q-ring.json` manifest analysis (declared vs missing) */
+  manifest: ManifestSnapshot | null;
+  /** Governance policy summary */
+  policy: PolicySnapshot;
+  /** Active approval tokens (HMAC-verified) */
+  approvals: ApprovalSnapshot[];
+  /** Registered hooks (shell/http/signal) */
+  hooks: HookSnapshot[];
+  /** Agent memory key count */
+  memoryKeys: number;
+}
+
+const AUDIT_WINDOW_SECONDS = 24 * 60 * 60; // 24h
 
 function toSecretSnapshot(entry: {
   key: string;
@@ -78,11 +199,114 @@ function toSecretSnapshot(entry: {
     description: envelope?.meta.description,
     tags: envelope?.meta.tags,
     entangled: envelope?.meta.entangled,
+    provider: envelope?.meta.provider,
+    requiresApproval: envelope?.meta.requiresApproval,
+    jitProvider: envelope?.meta.jitProvider,
+    hasRotationFormat: !!envelope?.meta.rotationFormat,
+  };
+}
+
+function summariseHookMatch(match: HookEntry["match"]): string {
+  const parts: string[] = [];
+  if (match.key) parts.push(`key=${match.key}`);
+  if (match.keyPattern) parts.push(`pattern=${match.keyPattern}`);
+  if (match.tag) parts.push(`tag=${match.tag}`);
+  if (match.scope) parts.push(`scope=${match.scope}`);
+  if (match.action?.length) parts.push(`on=${match.action.join("|")}`);
+  return parts.length ? parts.join(" · ") : "any change";
+}
+
+function buildManifest(
+  projectPath: string,
+  secrets: SecretSnapshot[],
+): ManifestSnapshot | null {
+  const config = readProjectConfig(projectPath);
+  if (!config?.secrets) return null;
+  const declared = Object.keys(config.secrets);
+  const projectSecrets = new Map(
+    secrets.filter((s) => s.scope === "project").map((s) => [s.key, s]),
+  );
+
+  const required: string[] = [];
+  const missing: string[] = [];
+  const expired: string[] = [];
+  const stale: string[] = [];
+
+  for (const key of declared) {
+    const entry = config.secrets[key];
+    if (entry.required) required.push(key);
+    const present = projectSecrets.get(key);
+    if (!present) {
+      if (entry.required) missing.push(key);
+      continue;
+    }
+    if (present.decay.isExpired) expired.push(key);
+    else if (present.decay.isStale) stale.push(key);
+  }
+
+  return {
+    declared: declared.length,
+    required: required.length,
+    missing,
+    expired,
+    stale,
+  };
+}
+
+function buildPolicySnapshot(projectPath: string): PolicySnapshot {
+  const summary = getPolicySummary(projectPath);
+  const mcp = summary.details.mcp ?? {};
+  const exec = summary.details.exec ?? {};
+  const sec = summary.details.secrets ?? {};
+  return {
+    hasMcpPolicy: summary.hasMcpPolicy,
+    hasExecPolicy: summary.hasExecPolicy,
+    hasSecretPolicy: summary.hasSecretPolicy,
+    counts: {
+      allowTools: mcp.allowTools?.length ?? 0,
+      denyTools: mcp.denyTools?.length ?? 0,
+      deniedKeys: mcp.deniedKeys?.length ?? 0,
+      deniedTags: mcp.deniedTags?.length ?? 0,
+      allowCommands: exec.allowCommands?.length ?? 0,
+      denyCommands: exec.denyCommands?.length ?? 0,
+      requireApprovalForTags: sec.requireApprovalForTags?.length ?? 0,
+      requireRotationFormatForTags: sec.requireRotationFormatForTags?.length ?? 0,
+    },
+    maxTtlSeconds: sec.maxTtlSeconds,
+    maxRuntimeSeconds: exec.maxRuntimeSeconds,
+  };
+}
+
+function buildAuditMetrics(events: AuditEvent[]): AuditMetrics {
+  const byAction = {} as Record<AuditAction, number>;
+  const bySource: Record<string, number> = {};
+  const readCounts = new Map<string, number>();
+
+  for (const e of events) {
+    byAction[e.action] = (byAction[e.action] ?? 0) + 1;
+    bySource[e.source] = (bySource[e.source] ?? 0) + 1;
+    if (e.action === "read" && e.key) {
+      readCounts.set(e.key, (readCounts.get(e.key) ?? 0) + 1);
+    }
+  }
+
+  const topRead = [...readCounts.entries()]
+    .map(([key, reads]) => ({ key, reads }))
+    .sort((a, b) => b.reads - a.reads)
+    .slice(0, 10);
+
+  return {
+    byAction,
+    bySource,
+    topRead,
+    total: events.length,
+    windowSeconds: AUDIT_WINDOW_SECONDS,
   };
 }
 
 export function collectSnapshot(): DashboardSnapshot {
-  const entries = listSecrets({ source: "api", silent: true });
+  const projectPath = process.cwd();
+  const entries = listSecrets({ source: "api", silent: true, projectPath });
 
   const secrets = entries.map(toSecretSnapshot);
 
@@ -90,28 +314,70 @@ export function collectSnapshot(): DashboardSnapshot {
   let stale = 0;
   let expired = 0;
   let noDecay = 0;
+  let protectedCount = 0;
+  const scopes: ScopeBreakdown = { global: 0, project: 0, team: 0, org: 0 };
 
   for (const s of secrets) {
-    if (!s.decay.timeRemaining) {
-      noDecay++;
-    } else if (s.decay.isExpired) {
-      expired++;
-    } else if (s.decay.isStale) {
-      stale++;
-    } else {
-      healthy++;
-    }
+    if (!s.decay.timeRemaining) noDecay++;
+    else if (s.decay.isExpired) expired++;
+    else if (s.decay.isStale) stale++;
+    else healthy++;
+    if (s.requiresApproval) protectedCount++;
+    if (s.scope === "global") scopes.global++;
+    else if (s.scope === "project") scopes.project++;
+    else if (s.scope === "team") scopes.team++;
+    else if (s.scope === "org") scopes.org++;
   }
+
+  const auditWindow = queryAudit({
+    since: new Date(Date.now() - AUDIT_WINDOW_SECONDS * 1000).toISOString(),
+  }).filter((e) => e.action !== "list");
+
+  const recent = auditWindow.slice(0, 80);
+
+  const approvals = listApprovals().map<ApprovalSnapshot>((a) => ({
+    id: a.id,
+    key: a.key,
+    scope: a.scope,
+    reason: a.reason,
+    grantedBy: a.grantedBy,
+    grantedAt: a.grantedAt,
+    expiresAt: a.expiresAt,
+    secondsRemaining: Math.floor(
+      (new Date(a.expiresAt).getTime() - Date.now()) / 1000,
+    ),
+    valid: a.valid && !a.tampered,
+    tampered: a.tampered,
+  }));
+
+  const hookEntries = listHooks().map<HookSnapshot>((h) => ({
+    id: h.id,
+    type: h.type,
+    description: h.description,
+    enabled: h.enabled,
+    match: h.match,
+    matchSummary: summariseHookMatch(h.match),
+  }));
 
   return {
     timestamp: new Date().toISOString(),
+    version: PACKAGE_VERSION,
+    projectPath,
     secrets,
     health: { healthy, stale, expired, noDecay, total: secrets.length },
+    scopes,
+    protectedCount,
     entanglements: listEntanglements(),
     tunnels: tunnelList(),
-    audit: queryAudit({ limit: 50 }).filter(e => e.action !== "list"),
+    audit: recent,
+    auditMetrics: buildAuditMetrics(auditWindow),
     anomalies: detectAnomalies(),
-    environment: collapseEnvironment(),
+    environment: collapseEnvironment({ projectPath }),
+    manifest: buildManifest(projectPath, secrets),
+    policy: buildPolicySnapshot(projectPath),
+    approvals,
+    hooks: hookEntries,
+    memoryKeys: listMemory().length,
   };
 }
 
