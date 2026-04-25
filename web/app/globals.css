@@ -1,17 +1,20 @@
 @import "tailwindcss";
+@import "@heroui/styles";
+@import "@heroui-pro/react/css";
 
 @theme inline {
-  --color-bg-deep: #04080f;
-  --color-bg-section: #080e18;
-  --color-bg-alt: #0b1221;
-  --color-bg-card: #0f1a2e;
-  --color-bg-card-hover: #142240;
+  /* q-ring legacy tokens (keep for WebGL / motion / existing utilities) */
+  --color-bg-deep: #020409;
+  --color-bg-section: #050a13;
+  --color-bg-alt: #070c19;
+  --color-bg-card: #0c1626;
+  --color-bg-card-hover: #111c36;
   --color-border: #1a2d4a;
   --color-border-glow: #0ea5e9;
 
   --color-text-primary: #f8f8ff;
-  --color-text-secondary: #c8cfe0;
-  --color-text-dim: #8899b4;
+  --color-text-secondary: #d3dae9;
+  --color-text-dim: #94a3bd;
 
   --color-accent: #0ea5e9;
   --color-accent-bright: #38bdf8;
@@ -21,6 +24,23 @@
   --color-danger: #ff5e5b;
   --color-warning: #fbbf24;
   --color-green: #22c55e;
+
+  /* HeroUI semantic tokens (Quantum Fluidity / dark) */
+  --color-background: #020409;
+  --color-foreground: #f8f8ff;
+  --color-muted: #94a3bd;
+  --color-surface: #0c1626;
+  --color-surface-foreground: #f8f8ff;
+  --color-overlay: #111c36;
+  --color-default: #070c19;
+  --color-default-foreground: #d3dae9;
+  --color-separator: #1a2d4a;
+  --color-accent-foreground: #020409;
+  --color-success: #22c55e;
+  --color-success-foreground: #020409;
+  --color-warning-foreground: #020409;
+  --color-danger-foreground: #020409;
+  --color-focus: #0ea5e9;
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -96,7 +116,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: rgba(4, 8, 15, 0.55);
+  background: rgba(2, 4, 9, 0.72);
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
   z-index: 1;

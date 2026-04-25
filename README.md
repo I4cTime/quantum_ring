@@ -626,9 +626,23 @@ qring agent --once
 
 ### Quantum Status Dashboard — Live Monitoring
 
-Launch a real-time dashboard in your browser that visualizes every quantum subsystem at a glance: health summary, decay timers, superposition states, entanglement pairs, active tunnels, anomaly alerts, audit log, and environment detection.
+Launch a real-time dashboard in your browser that turns the entire quantum subsystem into one glanceable page. The dashboard is a single self-contained HTML page served locally — no dependencies, no cloud, no config — and streams updates every 5 seconds via Server-Sent Events while preserving search input and scroll position across ticks.
 
-The dashboard is a self-contained HTML page served locally. Data streams in via Server-Sent Events and updates every 5 seconds — no dependencies, no cloud, no config.
+What you get:
+
+- **KPI strip** — total secrets, detected environment, protected count, active approvals, hooks, 24-hour reads, and live anomaly count.
+- **Health summary** — donut chart of healthy / stale / expired / no-decay secrets plus per-scope counts (global / project / team / org).
+- **Environment** — wavefunction collapse details: detected env, source, branch, and any project context.
+- **Manifest** — `.q-ring.json` summary with declared / required / missing / expired / stale keys.
+- **Policy** — at-a-glance view of MCP, exec, and secret policies (allow/deny tools, deny keys/tags, allow/deny commands, approval & rotation requirements).
+- **Secrets table** — searchable, sortable view of every secret (key, scope, env, type, decay, tags, last read), with quick chips for `expired`, `stale`, and `protected` filters. Press `/` to focus the search box.
+- **Quantum cards** — decay timers, superposition states, entanglement pairs, and active quantum tunnels.
+- **Approvals & hooks** — live list of valid (and tampered) approval grants and every registered hook with its match summary.
+- **Agent memory** — count of encrypted memory keys persisted at `~/.config/q-ring/agent-memory.enc`.
+- **Anomaly alerts** — burst reads, off-hours access, tampered audit chain, and other suspicious patterns.
+- **Audit log (24h)** — filterable feed with action chips (`read`/`write`/`delete`/`export`), source chips (`cli`/`mcp`/`hook`/`agent`), and a free-text filter.
+
+Top-bar controls let you **pause** SSE updates (handy while reading the audit feed), **refresh** on demand, or jump to the raw JSON snapshot at `/api/status`. Keyboard shortcuts: `/` focus secrets search · `P` pause · `R` refresh.
 
 ```bash
 # Open the dashboard (auto-launches your browser)
@@ -727,7 +741,7 @@ q-ring includes a full MCP server with 44 tools for AI agent integration.
 | `verify_audit_chain` | Verify tamper-evident hash chain integrity |
 | `export_audit` | Export audit events in jsonl, json, or csv format |
 | `health_check` | Full health report |
-| `status_dashboard` | Launch the quantum status dashboard via MCP |
+| `status_dashboard` | Launch the quantum status dashboard (SSE) — live KPIs, health, secrets table, manifest, policy, approvals, hooks, agent memory, anomalies, and audit feed |
 | `agent_scan` | Run autonomous agent scan |
 
 ### Governance & Policy Tools

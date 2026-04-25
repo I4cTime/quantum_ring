@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+- **Status dashboard rebuilt** — `qring status` (and the `status_dashboard` MCP tool) now serves a denser, more useful live page. New surfaces:
+  - **KPI strip** — total secrets, detected env, protected count, active approvals, hooks (enabled / total), 24-hour read & write counts, denied-action count, and live anomaly count.
+  - **Manifest panel** — declared / required / missing / expired / stale keys from `.q-ring.json`.
+  - **Policy panel** — at-a-glance MCP / exec / secret-policy presence with allow-deny / approval / rotation counts.
+  - **Approvals panel** — every grant with scope, reason, time-remaining, and tamper / expiry state.
+  - **Hooks panel** — every registered shell / HTTP / signal hook with its `key` / `tag` / `event` match summary.
+  - **Agent memory panel** — count of encrypted memory keys.
+  - **Sortable + searchable secrets table** — key / scope / env / type / decay / tags / last-read columns with quick chips (`expired`, `stale`, `protected`) and a `/`-focusable search box.
+  - **Audit log filters** — action chips (`read` / `write` / `delete` / `export`), source chips (`cli` / `mcp` / `hook` / `agent`), and a free-text filter.
+  - **Top-bar controls** — pause SSE updates, force refresh, jump to raw JSON, and a relative "updated Ns ago" timestamp that keeps ticking while paused.
+  - **Keyboard shortcuts** — `/` focus secrets search, `P` pause, `R` refresh, `Esc` blur.
+- **Snapshot payload expanded** — `/api/status` and the SSE stream now also include `version`, `projectPath`, `scopes`, `protectedCount`, `manifest`, `policy`, `approvals`, `hooks`, `memoryKeys`, and `auditMetrics` (action / source counts, top read keys, total events in the last 24h).
+
+### Fixed
+- **Dashboard search input no longer loses focus** — the SSE re-render now uses a focus-preserving DOM swap that retains caret position, selection, and scroll offset across the 5-second tick (previously, typing a search term would be wiped out on every snapshot).
+
 ## [0.10.1] — 2026-04-24
 
 ### Fixed

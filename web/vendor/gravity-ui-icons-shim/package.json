@@ -1,0 +1,14 @@
+{
+  "name": "@gravity-ui/icons",
+  "version": "0.0.0-shim",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./index.js"
+  },
+  "dependencies": {
+    "@gravity-ui/icons-real": "npm:@gravity-ui/icons@2.18.0"
+  }
+}
+

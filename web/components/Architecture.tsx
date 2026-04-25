@@ -1,10 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
+import { Chip } from "@heroui/react";
+import { HoverCard } from "@heroui-pro/react";
+import { ArrowRight, Cpu, Database, Server, Terminal } from "lucide-react";
+
 import FadeIn from "@/components/motion/FadeIn";
 
-const modules: { name: string; desc: string; section?: string }[] = [
+type Module = {
+  name: string;
+  desc: string;
+  section?: string;
+};
+
+const MODULES: Module[] = [
   { name: "Envelope", desc: "AES-256-GCM encrypted secret wrapper with metadata", section: "features" },
   { name: "Scope", desc: "Environment-aware secret resolution (global/project/team/org)", section: "features" },
   { name: "Collapse", desc: "Wavefunction collapse for automatic env detection", section: "features" },
@@ -29,124 +38,168 @@ const modules: { name: string; desc: string; section?: string }[] = [
 ];
 
 export default function Architecture() {
-  const [hoveredModule, setHoveredModule] = useState<string | null>(null);
-
   return (
     <section className="py-24 relative z-1 bg-bg-alt" id="architecture">
-      <div className="max-w-[1200px] mx-auto px-6 relative z-1">
-        <FadeIn>
-          <h2 className="text-center text-[clamp(2rem,5vw,3rem)] font-bold mb-2 bg-gradient-to-br from-text-primary to-accent-bright bg-clip-text text-transparent">
+      <div className="max-w-[1200px] mx-auto px-6">
+        <div className="text-center mb-12 space-y-3">
+          <p className="text-text-dim text-xs uppercase tracking-widest">
+            Under the hood
+          </p>
+          <h2 className="text-[clamp(2rem,5vw,3rem)] font-bold bg-gradient-to-br from-text-primary to-accent-bright bg-clip-text text-transparent">
             Architecture
           </h2>
-        </FadeIn>
-        <FadeIn delay={0.1}>
-          <p className="text-center text-text-secondary text-lg max-w-[600px] mx-auto mb-12">
+          <p className="text-text-secondary max-w-[640px] mx-auto">
             A modular core engine bridging CLI and MCP to your OS-native keyring.
+            Hover any module to see what it does.
           </p>
-        </FadeIn>
-        <FadeIn delay={0.2}>
-          <div className="flex items-center justify-center gap-6 flex-wrap py-8 max-md:flex-col">
-            {/* Entry */}
-            <div className="flex flex-col gap-3 items-center">
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                className="bg-bg-card border border-border rounded-sm px-6 py-3 font-[family-name:var(--font-mono)] text-sm font-medium text-center whitespace-nowrap transition-[border-color,box-shadow] duration-300 hover:border-border-glow hover:shadow-[0_0_16px_var(--color-accent-dim)] text-accent-bright cursor-default"
-              >
-                qring CLI
-              </motion.div>
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                className="bg-bg-card border border-border rounded-sm px-6 py-3 font-[family-name:var(--font-mono)] text-sm font-medium text-center whitespace-nowrap transition-[border-color,box-shadow] duration-300 hover:border-border-glow hover:shadow-[0_0_16px_var(--color-accent-dim)] text-warning cursor-default"
-              >
-                MCP Server
-              </motion.div>
-            </div>
+        </div>
 
-            {/* Arrow */}
-            <motion.div
-              className="text-accent text-2xl drop-shadow-[0_0_6px_var(--color-accent-glow)] max-md:rotate-90"
-              animate={{ opacity: [0.6, 1, 0.6] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14" />
-                <path d="m12 5 7 7-7 7" />
-              </svg>
-            </motion.div>
+        <FadeIn delay={0.1}>
+          <div className="flex items-stretch justify-center gap-6 flex-wrap py-6 max-md:flex-col max-md:items-center">
+            <Column>
+              <SurfaceCard
+                Icon={Terminal}
+                label="qring CLI"
+                tone="text-accent-bright"
+              />
+              <SurfaceCard
+                Icon={Server}
+                label="MCP Server"
+                tone="text-warning"
+              />
+            </Column>
 
-            {/* Core */}
-            <div className="flex flex-col gap-3 items-center">
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                className="bg-bg-card border border-accent rounded-sm px-6 py-3 font-[family-name:var(--font-mono)] text-base font-bold text-center whitespace-nowrap transition-[border-color,box-shadow] duration-300 hover:shadow-[0_0_16px_var(--color-accent-dim)] text-accent cursor-default"
-              >
-                Core Engine
-              </motion.div>
-              <div className="flex flex-wrap gap-1.5 justify-center max-w-[280px] relative">
-                {modules.map((m) => (
-                  <div key={m.name} className="relative group">
-                    <motion.button
-                      whileHover={{ scale: 1.1 }}
-                      onMouseEnter={() => setHoveredModule(m.name)}
-                      onMouseLeave={() => setHoveredModule(null)}
-                      onClick={() => {
-                        if (m.section) {
-                          document.getElementById(m.section)?.scrollIntoView({ behavior: "smooth" });
-                        }
-                      }}
-                      className="bg-accent-dim text-accent-bright font-[family-name:var(--font-mono)] text-[0.7rem] px-2.5 py-0.5 rounded border border-[rgba(14,165,233,0.2)] cursor-pointer hover:border-accent-bright hover:bg-accent/20 transition-colors"
-                    >
-                      {m.name}
-                    </motion.button>
-                    <AnimatePresence>
-                      {hoveredModule === m.name && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: 4 }}
-                          transition={{ duration: 0.15 }}
-                          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-bg-deep border border-border rounded text-xs text-text-secondary whitespace-nowrap z-10 shadow-lg pointer-events-none"
-                        >
-                          {m.desc}
-                          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-border" />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+            <FlowArrow delay={0} />
+
+            <Column className="items-center">
+              <SurfaceCard
+                Icon={Cpu}
+                label="Core Engine"
+                tone="text-accent"
+                emphasized
+              />
+              <div className="flex flex-wrap gap-1.5 justify-center max-w-[320px]">
+                {MODULES.map((m) => (
+                  <ModuleChip key={m.name} module={m} />
                 ))}
               </div>
-            </div>
+            </Column>
 
-            {/* Arrow */}
-            <motion.div
-              className="text-accent text-2xl drop-shadow-[0_0_6px_var(--color-accent-glow)] max-md:rotate-90"
-              animate={{ opacity: [0.6, 1, 0.6] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14" />
-                <path d="m12 5 7 7-7 7" />
-              </svg>
-            </motion.div>
+            <FlowArrow delay={0.5} />
 
-            {/* Exit */}
-            <div className="flex flex-col gap-3 items-center">
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                className="bg-bg-card border border-border rounded-sm px-6 py-3 font-[family-name:var(--font-mono)] text-sm font-medium text-center whitespace-nowrap transition-[border-color,box-shadow] duration-300 hover:border-border-glow hover:shadow-[0_0_16px_var(--color-accent-dim)] text-green cursor-default"
-              >
-                @napi-rs/keyring
-              </motion.div>
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                className="bg-bg-card border border-green rounded-sm px-6 py-3 font-[family-name:var(--font-mono)] text-sm font-medium text-center whitespace-nowrap transition-[border-color,box-shadow] duration-300 hover:border-border-glow hover:shadow-[0_0_16px_var(--color-accent-dim)] text-text-primary cursor-default"
-              >
-                OS Keyring
-              </motion.div>
-            </div>
+            <Column>
+              <SurfaceCard
+                Icon={Database}
+                label="@napi-rs/keyring"
+                tone="text-emerald-400"
+              />
+              <SurfaceCard
+                Icon={Database}
+                label="OS Keyring"
+                tone="text-text-primary"
+                bordered="emerald"
+              />
+            </Column>
           </div>
         </FadeIn>
       </div>
     </section>
+  );
+}
+
+function Column({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`flex flex-col gap-3 items-center ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+function FlowArrow({ delay }: { delay: number }) {
+  return (
+    <motion.div
+      className="text-accent drop-shadow-[0_0_6px_var(--color-accent-glow)] max-md:rotate-90 self-center"
+      animate={{ opacity: [0.6, 1, 0.6] }}
+      transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay }}
+    >
+      <ArrowRight className="size-6" strokeWidth={2.5} aria-hidden />
+    </motion.div>
+  );
+}
+
+function SurfaceCard({
+  Icon,
+  label,
+  tone,
+  emphasized,
+  bordered,
+}: {
+  Icon: React.ElementType;
+  label: string;
+  tone: string;
+  emphasized?: boolean;
+  bordered?: "emerald";
+}) {
+  const borderClass = emphasized
+    ? "border-accent"
+    : bordered === "emerald"
+      ? "border-emerald-500"
+      : "border-border";
+  return (
+    <motion.div
+      whileHover={{ scale: 1.04 }}
+      className={`bg-bg-card border ${borderClass} rounded-md px-5 py-3 font-[family-name:var(--font-mono)] ${
+        emphasized ? "text-base font-bold" : "text-sm font-medium"
+      } ${tone} flex items-center gap-2 whitespace-nowrap transition-[border-color,box-shadow] duration-300 hover:border-border-glow hover:shadow-[0_0_16px_var(--color-accent-dim)] cursor-default`}
+    >
+      <Icon className="size-4 shrink-0" strokeWidth={1.75} aria-hidden />
+      <span>{label}</span>
+    </motion.div>
+  );
+}
+
+function ModuleChip({ module }: { module: Module }) {
+  const onActivate = () => {
+    if (module.section) {
+      document
+        .getElementById(module.section)
+        ?.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  return (
+    <HoverCard openDelay={150} closeDelay={120}>
+      <HoverCard.Trigger>
+        <button
+          type="button"
+          onClick={onActivate}
+          className="cursor-pointer rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-bright"
+        >
+          <Chip
+            variant="soft"
+            size="sm"
+            className="font-[family-name:var(--font-mono)] text-[0.7rem] bg-accent-dim text-accent-bright hover:bg-accent/25 transition-colors"
+          >
+            {module.name}
+          </Chip>
+        </button>
+      </HoverCard.Trigger>
+      <HoverCard.Content
+        placement="top"
+        className="max-w-[280px] bg-bg-deep border border-border text-text-secondary text-xs px-3 py-2 rounded-md shadow-lg"
+      >
+        <HoverCard.Arrow />
+        <p className="text-text-primary font-medium text-sm mb-1">
+          {module.name}
+        </p>
+        <p className="leading-relaxed">{module.desc}</p>
+      </HoverCard.Content>
+    </HoverCard>
   );
 }
