@@ -71,7 +71,7 @@ export default function Nav() {
       className="bg-bg-deep/85 backdrop-blur-xl backdrop-saturate-[1.2] border-b border-border"
     >
       <Navbar.Header>
-        <Navbar.MenuToggle className="md:hidden" />
+        <Navbar.MenuToggle className="!text-text-primary hover:!text-accent-bright md:hidden" />
 
         <Navbar.Brand>
           <NextLink
@@ -143,13 +143,31 @@ export default function Nav() {
         </Navbar.Content>
       </Navbar.Header>
 
-      <Navbar.Menu>
-        {NAV_ITEMS.map((item) => (
-          <Navbar.MenuItem key={item.href} href={item.href}>
-            {item.label}
-          </Navbar.MenuItem>
-        ))}
-        <Navbar.MenuItem href="https://github.com/I4cTime/quantum_ring">
+      <Navbar.Menu className="!bg-bg-deep/95 backdrop-blur-xl">
+        {NAV_ITEMS.map((item) => {
+          const isCurrent = item.href.startsWith("/")
+            ? pathname === item.href || pathname?.startsWith(`${item.href}/`)
+            : false;
+          return (
+            <Navbar.MenuItem
+              key={item.href}
+              href={item.href}
+              isCurrent={isCurrent}
+              className={
+                "text-lg hover:!bg-accent-dim hover:!text-text-primary data-[hovered=true]:!bg-accent-dim data-[hovered=true]:!text-text-primary data-[pressed=true]:!bg-accent-dim " +
+                (isCurrent
+                  ? "!text-text-primary !bg-accent-dim font-semibold"
+                  : "!text-text-secondary font-medium")
+              }
+            >
+              {item.label}
+            </Navbar.MenuItem>
+          );
+        })}
+        <Navbar.MenuItem
+          href="https://github.com/I4cTime/quantum_ring"
+          className="!text-text-secondary text-lg font-medium hover:!bg-accent-dim hover:!text-text-primary data-[hovered=true]:!bg-accent-dim data-[hovered=true]:!text-text-primary data-[pressed=true]:!bg-accent-dim"
+        >
           GitHub
         </Navbar.MenuItem>
       </Navbar.Menu>

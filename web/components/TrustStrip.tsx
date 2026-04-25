@@ -1,6 +1,6 @@
 "use client";
 
-import { KPI, KPIGroup } from "@heroui-pro/react";
+import { KPI } from "@heroui-pro/react";
 import { Code2, Layers, Plug, Sparkles } from "lucide-react";
 
 const STATS = [
@@ -51,48 +51,46 @@ export default function TrustStrip() {
           </h2>
         </div>
 
-        <div className="rounded-2xl border border-border/60 bg-bg-card/40 backdrop-blur p-1">
-          <KPIGroup className="bg-transparent">
-            {STATS.map((stat, idx) => (
-              <Stat key={stat.title} stat={stat} isLast={idx === STATS.length - 1} />
+        {/*
+          KPIGroup forces flex-1 equal columns which clips long labels at narrow
+          widths. Use a custom grid that stacks 2x2 on small screens and flips
+          to 1x4 on lg+ instead, with manual divider borders.
+        */}
+        <div className="rounded-2xl border border-border/60 bg-bg-card/40 backdrop-blur overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 lg:divide-y-0 divide-border/60 sm:[&>:nth-child(odd)]:border-r sm:[&>:nth-child(odd)]:border-border/60 sm:[&>:nth-child(-n+2)]:border-b sm:[&>:nth-child(-n+2)]:border-border/60 lg:[&>:not(:last-child)]:border-r lg:[&>*]:border-b-0">
+            {STATS.map((stat) => (
+              <Stat key={stat.title} stat={stat} />
             ))}
-          </KPIGroup>
+          </div>
         </div>
       </div>
     </section>
   );
 }
 
-function Stat({
-  stat,
-  isLast,
-}: {
-  stat: (typeof STATS)[number];
-  isLast: boolean;
-}) {
+function Stat({ stat }: { stat: (typeof STATS)[number] }) {
   const { title, value, Icon, status, trend, trendLabel } = stat;
   return (
-    <>
-      <KPI className="bg-transparent shadow-none">
-        <KPI.Header>
-          <KPI.Icon status={status}>
-            <Icon className="size-4" strokeWidth={2} aria-hidden />
-          </KPI.Icon>
-          <KPI.Title className="text-text-secondary text-xs uppercase tracking-widest">
-            {title}
-          </KPI.Title>
-        </KPI.Header>
-        <KPI.Content>
-          <KPI.Value
-            className="text-text-primary text-3xl md:text-4xl font-extrabold"
-            locale="en-US"
-            maximumFractionDigits={0}
-            value={value}
-          />
-          <KPI.Trend trend={trend}>{trendLabel}</KPI.Trend>
-        </KPI.Content>
-      </KPI>
-      {!isLast ? <KPIGroup.Separator /> : null}
-    </>
+    <KPI className="bg-transparent shadow-none rounded-none">
+      <KPI.Header>
+        <KPI.Icon status={status}>
+          <Icon className="size-4" strokeWidth={2} aria-hidden />
+        </KPI.Icon>
+        <KPI.Title className="text-text-secondary text-[0.7rem] uppercase tracking-widest leading-tight">
+          {title}
+        </KPI.Title>
+      </KPI.Header>
+      <KPI.Content>
+        <KPI.Value
+          className="text-text-primary text-3xl md:text-4xl font-extrabold"
+          locale="en-US"
+          maximumFractionDigits={0}
+          value={value}
+        />
+        <KPI.Trend trend={trend} className="text-[0.7rem] text-right">
+          {trendLabel}
+        </KPI.Trend>
+      </KPI.Content>
+    </KPI>
   );
 }
