@@ -34,6 +34,10 @@ jobs:
           cache-dependency-path: web/pnpm-lock.yaml
 
       - name: Install dependencies
+        env:
+          # Required by @heroui-pro/react postinstall to download licensed
+          # bundle from the HeroUI CDN. Stored as a repo secret.
+          HEROUI_AUTH_TOKEN: ${{ secrets.HEROUI_AUTH_TOKEN }}
         run: pnpm install --frozen-lockfile
 
       - name: Build
