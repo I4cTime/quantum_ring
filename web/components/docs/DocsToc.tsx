@@ -37,8 +37,10 @@ export default function DocsToc({ items }: Props) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    computeActive();
-    let raf = 0;
+    let raf = window.requestAnimationFrame(() => {
+      raf = 0;
+      computeActive();
+    });
     const onScroll = () => {
       if (raf) return;
       raf = window.requestAnimationFrame(() => {
