@@ -1,138 +1,185 @@
 "use client";
 
-import { motion } from "motion/react";
-import FadeIn from "@/components/motion/FadeIn";
-import StaggerGroup, { itemVariants } from "@/components/motion/StaggerGroup";
-import CopyableTerminal from "@/components/CopyableTerminal";
+import { useMemo, useState } from "react";
+import { Button, Chip } from "@heroui/react";
+import {
+  ItemCard,
+  ItemCardGroup,
+  PressableFeedback,
+  Sheet,
+} from "@heroui-pro/react";
+import { ChevronRight } from "lucide-react";
 
-const pluginComponents = [
-  {
-    icon: (
-      <>
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
-        <path d="M14 2v6h6" />
-        <path d="M16 13H8" />
-        <path d="M16 17H8" />
-        <path d="M10 9H8" />
-      </>
-    ),
-    title: "3 Rules",
-    desc: "Always-on guidance: secret hygiene, q-ring workflow, and .env file safety.",
-  },
-  {
-    icon: (
-      <>
-        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-      </>
-    ),
-    title: "4 Skills",
-    desc: "Auto-triggered by context: management, scanning, rotation, and project onboarding.",
-  },
-  {
-    icon: (
-      <>
-        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-        <circle cx="9" cy="7" r="4" />
-        <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-      </>
-    ),
-    title: "2 Agents",
-    desc: "Security auditor for proactive monitoring and secret-ops for daily management.",
-  },
-  {
-    icon: (
-      <>
-        <polyline points="4 17 10 11 4 5" />
-        <line x1="12" y1="19" x2="20" y2="19" />
-      </>
-    ),
-    title: "5 Commands",
-    desc: "Scan secrets, health check, rotate expired, setup project, and teleport.",
-  },
-  {
-    icon: (
-      <>
-        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
-      </>
-    ),
-    title: "2 Hooks",
-    desc: "After file edit scan and session start project context loading.",
-  },
-  {
-    icon: (
-      <>
-        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-      </>
-    ),
-    title: "MCP Connector",
-    desc: "Auto-connects to qring-mcp via stdio. All 44 tools available in-IDE.",
-  },
-];
+import TerminalCard from "@/components/TerminalCard";
+import { PLUGIN_CATEGORIES } from "@/lib/data/plugin";
 
 export default function CursorPlugin() {
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const active = useMemo(
+    () =>
+      activeId ? PLUGIN_CATEGORIES.find((c) => c.id === activeId) ?? null : null,
+    [activeId],
+  );
+
   return (
     <section className="py-24 relative z-1 bg-bg-alt" id="cursor-plugin">
-      <div className="max-w-[1200px] mx-auto px-6 relative z-1">
-        <FadeIn>
-          <h2 className="text-center text-[clamp(2rem,5vw,3rem)] font-bold mb-2 bg-gradient-to-br from-text-primary to-accent-bright bg-clip-text text-transparent">
+      <div className="max-w-[1200px] mx-auto px-6">
+        <div className="text-center mb-10 space-y-3">
+          <p className="text-text-dim text-xs uppercase tracking-widest">
+            Drop into Cursor
+          </p>
+          <h2 className="text-[clamp(2rem,5vw,3rem)] font-bold bg-gradient-to-br from-text-primary to-accent-bright bg-clip-text text-transparent">
             Cursor Plugin
           </h2>
-        </FadeIn>
-        <FadeIn delay={0.1}>
-          <p className="text-center text-text-secondary text-lg max-w-[600px] mx-auto mb-12">
+          <p className="text-text-secondary max-w-[640px] mx-auto">
             Quantum secret management built into your IDE. Rules, skills, agents,
-            commands, and hooks — all powered by q-ring&apos;s 44 MCP tools.
+            commands, hooks, and the MCP connector — pre-wired to q-ring&apos;s
+            44 tools. Click any card for details.
           </p>
-        </FadeIn>
-        <StaggerGroup className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-5 mb-10">
-          {pluginComponents.map((f) => (
-            <motion.div
-              key={f.title}
-              variants={itemVariants}
-              whileHover={{
-                scale: 1.03,
-                transition: { type: "spring", stiffness: 400, damping: 25 },
-              }}
-              className="bg-bg-card border border-border rounded-md p-6 text-center transition-[border-color,box-shadow] duration-300 hover:border-border-glow hover:shadow-[0_8px_32px_rgba(14,165,233,0.1)]"
+        </div>
+
+        <ItemCardGroup
+          layout="grid"
+          columns={3}
+          variant="transparent"
+          className="gap-3"
+        >
+          {PLUGIN_CATEGORIES.map((cat) => (
+            <ItemCard<"button">
+              key={cat.id}
+              className="relative w-full cursor-pointer overflow-hidden bg-bg-card/70 border border-border/60 hover:border-border-glow transition-colors text-left"
+              render={(props) => (
+                <button
+                  type="button"
+                  {...props}
+                  onClick={() => setActiveId(cat.id)}
+                />
+              )}
             >
-              <svg
-                className="w-10 h-10 mb-3 mx-auto drop-shadow-[0_0_6px_rgba(0,209,255,0.5)]"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="url(#neon-grad)"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                {f.icon}
-              </svg>
-              <h4 className="text-base font-semibold mb-2 text-text-primary">
-                {f.title}
-              </h4>
-              <p className="text-text-secondary text-sm leading-relaxed">
-                {f.desc}
-              </p>
-            </motion.div>
+              <PressableFeedback.Highlight />
+              <ItemCard.Icon className="text-accent-bright">
+                <cat.Icon className="size-5" strokeWidth={1.75} aria-hidden />
+              </ItemCard.Icon>
+              <ItemCard.Content>
+                <ItemCard.Title className="text-text-primary flex items-center gap-2">
+                  {cat.title}
+                  <Chip size="sm" variant="soft" color="default">
+                    {cat.count}
+                  </Chip>
+                </ItemCard.Title>
+                <ItemCard.Description className="text-text-secondary line-clamp-2">
+                  {cat.summary}
+                </ItemCard.Description>
+              </ItemCard.Content>
+              <ItemCard.Action>
+                <ChevronRight className="size-4 text-text-dim" aria-hidden />
+              </ItemCard.Action>
+            </ItemCard>
           ))}
-        </StaggerGroup>
-        <FadeIn delay={0.2}>
-          <CopyableTerminal title="~ / install" maxWidth="600px">
-            <pre>
-              <span className="text-[#555]">
+        </ItemCardGroup>
+
+        <div className="mt-12 max-w-[640px] mx-auto">
+          <TerminalCard title="~/install" copyText="cp -r cursor-plugin/ ~/.cursor/plugins/qring/" maxWidth="640px">
+            <pre className="m-0 text-text-secondary text-sm">
+              <span className="text-text-dim">
                 # Install from the Cursor marketplace, or manually:
               </span>
               {"\n"}
-              <span className="text-green font-bold">$</span>{" "}
+              <span className="text-emerald-400 font-bold">$</span>{" "}
               <span className="text-accent-bright font-medium">
                 cp -r cursor-plugin/ ~/.cursor/plugins/qring/
               </span>
             </pre>
-          </CopyableTerminal>
-        </FadeIn>
+          </TerminalCard>
+        </div>
       </div>
+
+      <Sheet
+        placement="right"
+        isOpen={active !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setActiveId(null);
+        }}
+      >
+        <Sheet.Backdrop variant="blur">
+          <Sheet.Content className="w-full max-w-[480px]">
+            <Sheet.Dialog className="h-full bg-bg-card border-l border-border">
+              <Sheet.CloseTrigger />
+              {active ? (
+                <>
+                  <Sheet.Header className="border-b border-border/60">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center size-10 rounded-md bg-accent/15 text-accent-bright">
+                        <active.Icon
+                          className="size-5"
+                          strokeWidth={1.75}
+                          aria-hidden
+                        />
+                      </div>
+                      <div className="flex flex-col text-left">
+                        <Sheet.Heading className="text-lg font-semibold text-text-primary">
+                          {active.title}
+                        </Sheet.Heading>
+                        <span className="text-text-dim text-xs">
+                          {active.count}{" "}
+                          {active.count === 1 ? "asset" : "assets"} ship with the
+                          plugin
+                        </span>
+                      </div>
+                    </div>
+                  </Sheet.Header>
+                  <Sheet.Body className="space-y-5">
+                    {active.description.map((paragraph, idx) => (
+                      <p
+                        key={idx}
+                        className="text-text-secondary text-sm leading-relaxed"
+                      >
+                        {paragraph}
+                      </p>
+                    ))}
+
+                    <div className="space-y-2">
+                      <p className="text-text-dim text-xs uppercase tracking-widest">
+                        Included
+                      </p>
+                      <ul className="flex flex-col gap-2">
+                        {active.assets.map((asset) => (
+                          <li
+                            key={asset.name}
+                            className="flex flex-col gap-1 rounded-md border border-border/70 bg-bg-deep/50 px-3 py-2"
+                          >
+                            <code className="font-[family-name:var(--font-mono)] text-xs text-accent-bright">
+                              {asset.name}
+                            </code>
+                            <span className="text-text-secondary text-sm leading-relaxed">
+                              {asset.desc}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </Sheet.Body>
+                  <Sheet.Footer className="border-t border-border/60">
+                    <Sheet.Close>
+                      <Button variant="ghost">Close</Button>
+                    </Sheet.Close>
+                    <a
+                      href="https://github.com/I4cTime/quantum_ring/tree/main/cursor-plugin"
+                      target="_blank"
+                      rel="noopener"
+                      className="ml-auto text-accent-bright text-sm font-medium hover:underline inline-flex items-center gap-1"
+                    >
+                      Browse source
+                      <ChevronRight className="size-3.5" aria-hidden />
+                    </a>
+                  </Sheet.Footer>
+                </>
+              ) : null}
+            </Sheet.Dialog>
+          </Sheet.Content>
+        </Sheet.Backdrop>
+      </Sheet>
     </section>
   );
 }
