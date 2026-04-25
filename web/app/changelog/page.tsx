@@ -17,6 +17,15 @@ interface ChangelogEntry {
 
 const changelog: ChangelogEntry[] = [
   {
+    version: "0.10.1",
+    date: "2026-04-24",
+    highlights: [
+      { type: "fixed", text: "Publish workflow — removed the broken `npm install -g npm@latest` bootstrap step that had silently blocked v0.9.9 and v0.10.0 from reaching npm (Cannot find module 'promise-retry' on Node 22 runner)" },
+      { type: "added", text: "publish.yml gained a workflow_dispatch trigger with optional `ref` input so a stuck release can be re-published manually from the Actions tab" },
+      { type: "changed", text: "Functional code unchanged from 0.10.0 — patch exists solely to ship a new artifact through the now-fixed pipeline" },
+    ],
+  },
+  {
     version: "0.10.0",
     date: "2026-04-24",
     highlights: [
