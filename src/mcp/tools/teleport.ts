@@ -13,13 +13,23 @@ const { teamId, orgId, scope, projectPath } = commonSchemas;
 export function registerTeleportTools(server: McpServer): void {
   server.tool(
     "teleport_pack",
-    "[teleport] Pack secrets into an AES-256-GCM encrypted bundle for sharing between machines (quantum teleportation).",
+    [
+      "[teleport] Encrypt one or more secrets into a single AES-256-GCM bundle string that can be safely transferred between machines.",
+      "Use to hand off a curated set of credentials to another developer or environment; prefer `export_secrets` for plaintext .env output (single machine, trusted) and `tunnel_create` for ephemeral one-shot delivery on the same machine.",
+      "Reads each secret value (records 'export' audit events) and produces a base64-encoded ciphertext. The bundle is unreadable without the same passphrase via `teleport_unpack`. Returns the bundle string directly. Errors with 'No secrets to pack' if the filter matched zero secrets.",
+    ].join(" "),
     {
       keys: z
         .array(z.string())
         .optional()
-        .describe("Specific keys to pack (all if omitted)"),
-      passphrase: z.string().describe("Encryption passphrase"),
+        .describe(
+          "Whitelist of exact key names to include. Omit to pack every secret in the requested scope.",
+        ),
+      passphrase: z
+        .string()
+        .describe(
+          "Symmetric passphrase used to derive the AES-256-GCM key. The receiver must supply the same string to `teleport_unpack`. Pick something high-entropy and share it out-of-band.",
+        ),
       scope,
       projectPath,
       teamId,
@@ -50,10 +60,22 @@ export function registerTeleportTools(server: McpServer): void {
 
   server.tool(
     "teleport_unpack",
-    "[teleport] Decrypt and import secrets from a teleport bundle.",
+    [
+      "[teleport] Decrypt a bundle produced by `teleport_pack` and import each contained secret into the local keyring.",
+      "Use on the receiving machine after a packer hands you the bundle and passphrase out-of-band; prefer `dryRun=true` first to preview what will be written.",
+      "When dryRun is false this mutates the keyring (one 'write' event per imported secret) at the requested scope. Bad passphrase or tampered bundle returns JSON `{ ok: false, error: { message } }` with `isError: true`. On success returns 'Imported N secret(s) from teleport bundle'; in dryRun mode returns 'Would import N secrets:' followed by a `KEY [scope]` listing.",
+    ].join(" "),
     {
-      bundle: z.string().describe("Base64-encoded encrypted bundle"),
-      passphrase: z.string().describe("Decryption passphrase"),
+      bundle: z
+        .string()
+        .describe(
+          "Base64-encoded ciphertext returned by `teleport_pack`. Pass through whitespace untouched if possible.",
+        ),
+      passphrase: z
+        .string()
+        .describe(
+          "The same passphrase that was used to pack this bundle. Bad passphrases return an authentication error rather than wrong plaintext.",
+        ),
       scope: scope.default("global"),
       projectPath,
       teamId,
@@ -62,7 +84,9 @@ export function registerTeleportTools(server: McpServer): void {
         .boolean()
         .optional()
         .default(false)
-        .describe("Preview without importing"),
+        .describe(
+          "If true, decrypt and report what would be written but do not mutate the keyring. Useful for verifying bundle contents before commit.",
+        ),
     },
     async (params) => {
       const toolBlock = enforceToolPolicy("teleport_unpack", params.projectPath);

@@ -52,21 +52,31 @@ export const commonSchemas = {
   teamId: z
     .string()
     .optional()
-    .describe("Team identifier for team-scoped secrets"),
+    .describe(
+      "Team identifier for team-scoped secrets. Required only when scope='team'. Example: 'acme-platform'.",
+    ),
   orgId: z
     .string()
     .optional()
-    .describe("Org identifier for org-scoped secrets"),
+    .describe(
+      "Organization identifier for org-scoped secrets. Required only when scope='org'. Example: 'acme-corp'.",
+    ),
   scope: z
     .enum(["global", "project", "team", "org"])
     .optional()
-    .describe("Scope: global, project, team, or org"),
+    .describe(
+      "Where the secret lives. 'global' = user keyring (default if omitted on reads), 'project' = scoped to projectPath, 'team' = team-shared (needs teamId), 'org' = org-shared (needs orgId).",
+    ),
   projectPath: z
     .string()
     .optional()
-    .describe("Project root path for project-scoped secrets"),
+    .describe(
+      "Absolute path to the project root for project-scoped secrets and policy resolution. Defaults to the MCP server's current working directory when omitted.",
+    ),
   env: z
     .string()
     .optional()
-    .describe("Environment for superposition collapse (e.g., dev, staging, prod)"),
+    .describe(
+      "Environment slug used to collapse superposition when a secret has multiple per-env states. Examples: 'dev', 'staging', 'prod'. If omitted, the secret's defaultEnv is used.",
+    ),
 } as const;

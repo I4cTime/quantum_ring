@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.11.7] — 2026-04-27
+
+### Changed
+- **MCP tool descriptions overhauled for Glama TDQS** — every one of the 44 MCP tools now ships a 3-sentence description hitting all six [Tool Definition Quality Score](https://glama.ai/blog/2026-04-03-tool-definition-quality-score-tdqs) dimensions (purpose, when-to-use vs. siblings, side effects/audit/network, parameter semantics, conciseness, returns). Common parameter schemas (`scope`, `projectPath`, `env`, `teamId`, `orgId`) and per-tool Zod `.describe()` strings now include formats, defaults, and concrete examples to lift the per-tool minimum score (which dominates the server-level grade at 60% mean / 40% min). README MCP tables resynced with the new one-liners.
+- **`feature-docs-sync.mdc` rule rewritten** — drops stale `web/components/...` globs (the marketing site was extracted to its own repo in 0.11.5) and replaces them with an explicit `quantum_ring` ↔ `qring.i4c.studio` cross-repo file mapping covering `lib/data/{features,mcp-tools,cli-commands,cli-reference,changelog,version}.ts`.
+- **`release-process.mdc` rule** — `Downstream Sync` table now lists the marketing site, Cursor plugin, Kiro plugin, and Claude Code plugin alongside Glama, with explicit commands and a note that the marketing-site sync is not enforced by `quantum_ring` CI.
+
+### Notes
+- No runtime / MCP wire-format changes — this is a documentation-quality release. Existing agents and integrations will see longer, clearer tool descriptions and richer parameter help when they next refresh `tools/list`, but tool names, parameter names, and return shapes are unchanged.
+- After publish, trigger a Glama re-sync from the admin panel so the new descriptions feed the next TDQS scoring run.
+
 ## [0.11.5] — 2026-04-27
 
 ### Added

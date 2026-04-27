@@ -663,95 +663,95 @@ q-ring includes a full MCP server with 44 tools for AI agent integration.
 
 | Tool | Description |
 |------|-------------|
-| `get_secret` | Retrieve with superposition collapse + observer logging |
-| `list_secrets` | List keys with quantum metadata, filterable by tag/expiry/pattern |
-| `set_secret` | Store with optional TTL, env state, tags, rotation format |
-| `delete_secret` | Remove a secret |
-| `has_secret` | Boolean check (respects decay) |
-| `export_secrets` | Export as .env/JSON with optional key and tag filters |
-| `import_dotenv` | Parse and import secrets from .env content |
-| `check_project` | Validate project secrets against `.q-ring.json` manifest |
-| `env_generate` | Generate .env content from the project manifest |
+| `get_secret` | Read a secret value (collapses superposition, audits the read) |
+| `list_secrets` | List keys + metadata in scope (values never exposed); filter by tag, expiry, glob |
+| `set_secret` | Create or overwrite a single secret with optional TTL, per-env state, tags, rotation format |
+| `delete_secret` | Permanently remove a secret value (not undoable from q-ring) |
+| `has_secret` | Boolean existence check that respects decay (no audit read) |
+| `export_secrets` | Render multiple secrets as `.env` or JSON for one-off export |
+| `import_dotenv` | Parse `.env` text and bulk-store every key/value pair |
+| `check_project` | Compare `.q-ring.json` manifest against the keyring for missing/expired/stale keys |
+| `env_generate` | Render a complete `.env` body from the project manifest, with warnings for gaps |
 
 ### Quantum Tools
 
 | Tool | Description |
 |------|-------------|
-| `inspect_secret` | Full quantum state (states, decay, entanglement, access count) |
-| `detect_environment` | Wavefunction collapse — detect current env context |
-| `generate_secret` | Quantum noise — generate and optionally save secrets |
-| `entangle_secrets` | Link two secrets for synchronized rotation |
-| `disentangle_secrets` | Remove entanglement between two secrets |
+| `inspect_secret` | Show metadata for one key (states, decay, entanglement, access count) without revealing the value |
+| `detect_environment` | Resolve which env slug should drive superposition collapse for the current context |
+| `generate_secret` | Generate a CSPRNG-backed value in a chosen format and optionally store it |
+| `entangle_secrets` | Link two keys so future writes/rotations propagate the same value |
+| `disentangle_secrets` | Break the sync link between two keys (does not delete values) |
 
 ### Tunneling Tools
 
 | Tool | Description |
 |------|-------------|
-| `tunnel_create` | Create ephemeral in-memory secret |
-| `tunnel_read` | Read (may self-destruct) |
-| `tunnel_list` | List active tunnels |
-| `tunnel_destroy` | Immediately destroy |
+| `tunnel_create` | Stash a value in process memory and return an opaque ID (never touches disk) |
+| `tunnel_read` | Fetch a tunneled value by ID — may self-destruct on read |
+| `tunnel_list` | Enumerate active tunnels with remaining read budget and TTL (IDs only) |
+| `tunnel_destroy` | Immediately remove a tunnel from memory before its TTL/reads run out |
 
 ### Teleportation Tools
 
 | Tool | Description |
 |------|-------------|
-| `teleport_pack` | Encrypt secrets into a portable bundle |
-| `teleport_unpack` | Decrypt and import a bundle |
+| `teleport_pack` | Encrypt selected secrets into a passphrase-protected AES-256-GCM bundle |
+| `teleport_unpack` | Decrypt a teleport bundle and import each secret (with optional dry-run) |
 
 ### Validation Tools
 
 | Tool | Description |
 |------|-------------|
-| `validate_secret` | Test if a secret is valid with its target service (OpenAI, Stripe, GitHub, etc.) |
-| `list_providers` | List all available validation providers |
+| `validate_secret` | Hit the upstream service (OpenAI/Stripe/GitHub/AWS/HTTP) to confirm a single key is still live |
+| `list_providers` | Enumerate built-in validation providers and their auto-detect prefixes |
 
 ### Hook Tools
 
 | Tool | Description |
 |------|-------------|
-| `register_hook` | Register a shell/HTTP/signal callback on secret changes |
-| `list_hooks` | List all registered hooks with match criteria and status |
-| `remove_hook` | Remove a registered hook by ID |
+| `register_hook` | Register a shell/HTTP/signal side-effect that fires on write/delete/rotate |
+| `list_hooks` | Show every registered hook with match criteria, type, and enabled flag |
+| `remove_hook` | Detach a single hook by ID without touching any secrets |
 
 ### Execution & Scanning Tools
 
 | Tool | Description |
 |------|-------------|
-| `exec_with_secrets` | Run a shell command securely with secrets injected, auto-redacted output, and exec profile enforcement |
-| `scan_codebase_for_secrets` | Scan a directory for hardcoded secrets using regex heuristics and entropy analysis |
-| `lint_files` | Lint specific files for hardcoded secrets with optional auto-fix |
+| `exec_with_secrets` | Run a child command with secrets injected as env vars and any leaked values redacted from output |
+| `scan_codebase_for_secrets` | Walk a directory tree and flag hardcoded secrets via regex + entropy heuristics |
+| `lint_files` | Inspect a specific file list for hardcoded secrets with optional auto-fix to `process.env.KEY` |
 
 ### AI Agent Tools
 
 | Tool | Description |
 |------|-------------|
-| `get_project_context` | Safe, redacted overview of project secrets, environment, manifest, and activity |
-| `agent_remember` | Store a key-value pair in encrypted agent memory (persists across sessions) |
-| `agent_recall` | Retrieve from agent memory, or list all stored keys |
-| `agent_forget` | Delete a key from agent memory |
-| `analyze_secrets` | Usage analytics: most accessed, stale, unused, and rotation recommendations |
+| `get_project_context` | Single redacted snapshot of secrets, env, manifest, hooks, and recent audit activity |
+| `agent_remember` | Persist a non-secret note in encrypted agent memory across sessions |
+| `agent_recall` | Read a memory value, or list every stored key when no key is supplied |
+| `agent_forget` | Permanently delete a key from agent memory |
+| `analyze_secrets` | Usage profile: most-accessed, stale, never-accessed, no-rotation candidates |
 
 ### Observer & Health Tools
 
 | Tool | Description |
 |------|-------------|
-| `audit_log` | Query access history |
-| `detect_anomalies` | Scan for unusual access patterns |
-| `verify_audit_chain` | Verify tamper-evident hash chain integrity |
-| `export_audit` | Export audit events in jsonl, json, or csv format |
-| `health_check` | Full health report |
-| `status_dashboard` | Launch the quantum status dashboard (SSE) — live KPIs, health, secrets table, manifest, policy, approvals, hooks, agent memory, anomalies, and audit feed |
-| `agent_scan` | Run autonomous agent scan |
+| `audit_log` | Query the tamper-evident audit log filtered by key, action, and limit |
+| `detect_anomalies` | Surface burst-read and off-hours findings from audit history |
+| `verify_audit_chain` | Recompute the audit hash chain and report the first break point if tampered |
+| `export_audit` | Export audit events as jsonl, json, or csv for archival/SIEM |
+| `health_check` | Read-only scope sweep: decay/stale/expired counts plus current anomalies |
+| `status_dashboard` | Start a local SSE dashboard with live KPIs, secrets, hooks, and audit feed |
+| `agent_scan` | Multi-project health pass with optional `autoRotate` for expired secrets |
 
 ### Governance & Policy Tools
 
 | Tool | Description |
 |------|-------------|
-| `check_policy` | Check if an action (tool use, key read, exec) is allowed by project policy |
-| `get_policy_summary` | Get a summary of the project's governance policy configuration |
-| `rotate_secret` | Attempt issuer-native rotation via detected or specified provider |
-| `ci_validate_secrets` | CI-oriented batch validation of all secrets with structured pass/fail report |
+| `check_policy` | Dry-run a tool/key/exec action against `.q-ring.json` policy without performing it |
+| `get_policy_summary` | High-level overview of policy rule counts and approval/rotation requirements |
+| `rotate_secret` | Ask the upstream provider to issue a new credential and store it back in the keyring |
+| `ci_validate_secrets` | Batch-validate every accessible secret in scope and return a structured pass/fail report |
 
 ### Cursor / Kiro Configuration
 
