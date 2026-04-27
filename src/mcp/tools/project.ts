@@ -10,7 +10,11 @@ const { teamId, orgId, scope, projectPath, env } = commonSchemas;
 export function registerProjectTools(server: McpServer): void {
   server.tool(
     "check_project",
-    "[project] Validate project secrets against the .q-ring.json manifest. Returns which required secrets are present, missing, expired, or stale. Use this to verify project readiness.",
+    [
+      "[project] Compare the keys declared in the project's `.q-ring.json` manifest against what is actually present in the keyring.",
+      "Use as the canonical 'is this project ready to run' gate before starting a dev server, deploying, or onboarding a teammate; prefer `health_check` for a scope-wide decay sweep (no manifest), and `agent_scan` for multi-project scans with optional auto-rotation.",
+      "Read-only; does not mutate the keyring or audit log materially beyond a 'list' read. Returns JSON `{ total, present, missing, expired, stale, ready, secrets: [...] }` where `ready` is true only when nothing is missing or expired. Errors with 'No secrets manifest found in .q-ring.json' if the project has no manifest.",
+    ].join(" "),
     {
       projectPath,
     },
@@ -87,7 +91,11 @@ export function registerProjectTools(server: McpServer): void {
 
   server.tool(
     "env_generate",
-    "[project] Generate .env file content from the project manifest (.q-ring.json). Resolves each declared secret from q-ring, collapses superposition, and returns .env formatted output. Warns about missing or expired secrets.",
+    [
+      "[project] Render a complete `.env` file body from the project's `.q-ring.json` manifest, resolving each declared key from the keyring.",
+      "Use when a build step or local runtime needs a real `.env` materialized on disk and you want exactly the keys the manifest declares; prefer `export_secrets` when you want every key in scope (manifest-agnostic) and `exec_with_secrets` to inject secrets into a child process without writing them to a file.",
+      "Reads values (records 'read' audit events) and collapses superposition for the requested env. Returns the raw `.env` text, with `# MISSING (required): KEY` / `# EXPIRED: KEY` / `# STALE: KEY` warnings appended as comments. Missing keys appear as commented-out `# KEY=` placeholders so the file remains a valid drop-in.",
+    ].join(" "),
     {
       projectPath,
       env,
@@ -147,7 +155,11 @@ export function registerProjectTools(server: McpServer): void {
 
   server.tool(
     "detect_environment",
-    "[project] Detect the current environment context (wavefunction collapse). Returns the detected environment and its source (NODE_ENV, git branch, project config, etc.).",
+    [
+      "[project] Resolve which environment slug (e.g. 'dev', 'staging', 'prod') the current invocation should collapse to.",
+      "Use before reading secrets when you want to mirror the same env q-ring would auto-pick (e.g. to log it, or to pass through to another tool); prefer passing an explicit `env` to `get_secret`/`env_generate` when you already know which env you want.",
+      "Read-only; checks the QRING_ENV env var, NODE_ENV, the project's `.q-ring.json`, and the current git branch in priority order. Returns JSON `{ env, source }` (e.g. `{ env: 'dev', source: 'NODE_ENV' }`), or a plain message indicating that no env could be detected.",
+    ].join(" "),
     {
       projectPath,
     },
@@ -174,7 +186,11 @@ export function registerProjectTools(server: McpServer): void {
 
   server.tool(
     "get_project_context",
-    "[agent] Get a safe, redacted overview of the project's secrets, environment, manifest, providers, hooks, and recent audit activity. No secret values are ever exposed. Use this to understand what secrets exist before asking to read them.",
+    [
+      "[agent] Return a single redacted snapshot of everything an AI agent typically wants to know about this project: secrets present (keys + metadata only), detected env, manifest declarations, configured providers, registered hooks, and recent audit activity.",
+      "Use this as the very first call in a session to orient the agent before it asks for any individual secret; prefer `list_secrets` for a flat key listing, `check_project` for manifest-vs-keyring drift, and `audit_log` for a deeper access trail.",
+      "Read-only and value-safe — no plaintext secret values are ever included. Returns a single pretty-printed JSON document; shape is intentionally broad and may grow over time, so read defensively.",
+    ].join(" "),
     {
       scope,
       projectPath,

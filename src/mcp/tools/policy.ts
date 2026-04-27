@@ -13,20 +13,35 @@ const { projectPath } = commonSchemas;
 export function registerPolicyTools(server: McpServer): void {
   server.tool(
     "check_policy",
-    "[policy] Check if an action is allowed by the project's governance policy. Returns the policy decision and source.",
+    [
+      "[policy] Ask whether a single intended action would be allowed by the project's `.q-ring.json` policy without actually performing it.",
+      "Use as a dry-run before calling a potentially-blocked tool, attempting to read a sensitive key, or invoking `exec_with_secrets` with a non-trivial command; prefer `get_policy_summary` for a one-shot overview of the entire policy.",
+      "Read-only. Returns JSON `{ allowed, reason?, policySource }` describing the decision. Returns an error 'Missing required parameter for the selected action type' if the matching argument for the chosen `action` is not supplied.",
+    ].join(" "),
     {
       action: z
         .enum(["tool", "key_read", "exec"])
-        .describe("Type of policy check"),
+        .describe(
+          "Which policy surface to query. 'tool' = MCP tool gate (needs `toolName`); 'key_read' = secret read gate (needs `key`); 'exec' = exec_with_secrets command gate (needs `command`).",
+        ),
       toolName: z
         .string()
         .optional()
-        .describe("Tool name to check (for action=tool)"),
-      key: z.string().optional().describe("Secret key to check (for action=key_read)"),
+        .describe(
+          "Tool id to evaluate, e.g. 'rotate_secret'. Required when `action` is 'tool'.",
+        ),
+      key: z
+        .string()
+        .optional()
+        .describe(
+          "Secret key name to evaluate. Required when `action` is 'key_read'.",
+        ),
       command: z
         .string()
         .optional()
-        .describe("Command to check (for action=exec)"),
+        .describe(
+          "Command to evaluate against the exec allowlist/denylist. Required when `action` is 'exec'.",
+        ),
       projectPath,
     },
     async (params) => {
@@ -51,7 +66,11 @@ export function registerPolicyTools(server: McpServer): void {
 
   server.tool(
     "get_policy_summary",
-    "[policy] Get a summary of the project's governance policy configuration.",
+    [
+      "[policy] Return a high-level summary of the project's `.q-ring.json` governance policy — counts of allow/deny rules for tools, key reads, exec commands, plus approval and rotation requirements.",
+      "Use to orient an agent (or the user) on what guardrails are active before attempting policy-restricted actions; prefer `check_policy` for a precise per-action verdict.",
+      "Read-only. Returns pretty-printed JSON; missing policy file returns an empty/default summary rather than an error so callers can branch on the counts.",
+    ].join(" "),
     {
       projectPath,
     },
