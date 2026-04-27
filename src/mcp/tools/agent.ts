@@ -6,10 +6,22 @@ import { text, enforceToolPolicy } from "./_shared.js";
 export function registerAgentTools(server: McpServer): void {
   server.tool(
     "agent_remember",
-    "[agent] Store a key-value pair in encrypted agent memory that persists across sessions. Use this to remember decisions, rotation history, or project-specific context.",
+    [
+      "[agent] Persist a non-secret key/value note in encrypted, on-disk agent memory that survives across MCP sessions.",
+      "Use to record stable agent context — last rotation date for a key, the user's deployment preferences, decisions taken in earlier sessions; do NOT use this to store secrets (use `set_secret` instead) and prefer chat scratchpad for purely transient state.",
+      "Mutates the encrypted memory store. Idempotent: rewriting the same key with a new value simply overwrites. Returns 'Remembered \"KEY\"' on success.",
+    ].join(" "),
     {
-      key: z.string().describe("Memory key"),
-      value: z.string().describe("Value to store"),
+      key: z
+        .string()
+        .describe(
+          "Memory key (free-form string). Convention: lowercase dotted namespaces, e.g. 'project.lastDeploy'.",
+        ),
+      value: z
+        .string()
+        .describe(
+          "Plain-string value to store. JSON-stringify structured data on the caller side if needed.",
+        ),
     },
     async (params) => {
       const toolBlock = enforceToolPolicy("agent_remember");
@@ -22,9 +34,18 @@ export function registerAgentTools(server: McpServer): void {
 
   server.tool(
     "agent_recall",
-    "[agent] Retrieve a value from agent memory, or list all stored keys if no key is provided.",
+    [
+      "[agent] Read a value from encrypted agent memory, or list every stored key when no specific key is supplied.",
+      "Use at the start of an agent loop to rehydrate prior context, or to look up a single remembered fact; prefer `get_project_context` for a redacted overview of secrets and `get_secret` for actual credential values.",
+      "Read-only. With a `key` argument: returns JSON `{ ok, data: { key, value } }` or a not-found error. Without `key`: returns a JSON listing of every stored key (no values), or 'Agent memory is empty'.",
+    ].join(" "),
     {
-      key: z.string().optional().describe("Memory key to recall (omit to list all)"),
+      key: z
+        .string()
+        .optional()
+        .describe(
+          "Memory key to read. Omit to list every stored key (without values).",
+        ),
     },
     async (params) => {
       const toolBlock = enforceToolPolicy("agent_recall");
@@ -46,9 +67,13 @@ export function registerAgentTools(server: McpServer): void {
 
   server.tool(
     "agent_forget",
-    "[agent] Delete a key from agent memory.",
+    [
+      "[agent] Permanently delete a single key from encrypted agent memory.",
+      "Use to retract obsolete or misremembered context; prefer overwriting via `agent_remember` when you just want to update the value, and use `delete_secret` for actual credentials (which never live in agent memory).",
+      "Destructive: there is no recycle bin. Returns 'Forgot \"KEY\"' on success or a not-found error if the key was already absent.",
+    ].join(" "),
     {
-      key: z.string().describe("Memory key to forget"),
+      key: z.string().describe("Memory key to delete."),
     },
     async (params) => {
       const toolBlock = enforceToolPolicy("agent_forget");

@@ -14,23 +14,42 @@ const { teamId, orgId, scope, projectPath } = commonSchemas;
 export function registerToolingTools(server: McpServer): void {
   server.tool(
     "exec_with_secrets",
-    "[exec] Run a shell command securely. Project secrets are injected into the environment, and any secret values in the output are automatically redacted to prevent leaking into transcripts.",
+    [
+      "[exec] Run a child shell command with project secrets injected as environment variables and any leaked secret values redacted from captured stdout/stderr before they return to the agent.",
+      "Use to let an agent run a script that needs credentials (`npm run db:migrate`, `terraform plan`, `vercel deploy`) without ever putting plaintext values in the chat; prefer `env_generate` if you need to write a `.env` file to disk and `validate_secret` for upstream liveness checks.",
+      "Spawns a real child process — has whatever side effects the command itself causes (writes, network, exec). Subject to BOTH tool policy and exec policy (allowlist/denylist). Returns a text body with `Exit code: N` then `STDOUT:` and `STDERR:` blocks; both streams are scrubbed against the secret values that were injected.",
+    ].join(" "),
     {
-      command: z.string().describe("Command to run"),
-      args: z.array(z.string()).optional().describe("Command arguments"),
+      command: z
+        .string()
+        .describe(
+          "Executable name or full command to run. Example: 'pnpm', 'node', '/usr/bin/env'. Must be allowed by exec policy.",
+        ),
+      args: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Positional arguments passed to `command`. Example: ['run', 'db:migrate']. Each element is passed verbatim with no extra shell parsing.",
+        ),
       keys: z
         .array(z.string())
         .optional()
-        .describe("Only inject these specific keys"),
+        .describe(
+          "Whitelist of exact key names to inject. Omit to inject every secret in scope (subject to `tags`).",
+        ),
       tags: z
         .array(z.string())
         .optional()
-        .describe("Only inject secrets with these tags"),
+        .describe(
+          "Inject only secrets carrying at least one of these tags. Combinable with `keys` as an AND filter.",
+        ),
       profile: z
         .enum(["unrestricted", "restricted", "ci"])
         .optional()
         .default("restricted")
-        .describe("Exec profile: unrestricted, restricted, or ci"),
+        .describe(
+          "Exec sandbox profile. 'restricted' (default) limits PATH and inheritable env vars; 'ci' is restricted plus CI-friendly defaults (no TTY); 'unrestricted' inherits the full server environment — only pick this when you understand the leak risk.",
+        ),
       scope,
       projectPath,
       teamId,
@@ -75,11 +94,17 @@ export function registerToolingTools(server: McpServer): void {
 
   server.tool(
     "scan_codebase_for_secrets",
-    "[scan] Scan a directory for hardcoded secrets using regex heuristics and Shannon entropy analysis. Returns file paths, line numbers, and the matched key/value to help migrate legacy codebases into q-ring.",
+    [
+      "[scan] Walk a directory tree and flag plausible hardcoded secrets using regex heuristics plus Shannon-entropy scoring on string literals.",
+      "Use as a one-shot 'is anything leaking in this repo?' audit before commit/release; prefer `lint_files` when you already know the specific files to check (and want optional auto-fix).",
+      "Read-only — never modifies source files. Honors `.gitignore`. Returns JSON array of `{ file, line, key, value, kind }` findings, or 'No hardcoded secrets found in the specified directory.' when clean. False positives are possible — review before treating as ground truth.",
+    ].join(" "),
     {
       dirPath: z
         .string()
-        .describe("Absolute or relative path to the directory to scan"),
+        .describe(
+          "Directory to scan, absolute or relative to the server cwd. The scan recurses into subdirectories.",
+        ),
     },
     async (params) => {
       const toolBlock = enforceToolPolicy("scan_codebase_for_secrets");
@@ -102,14 +127,24 @@ export function registerToolingTools(server: McpServer): void {
 
   server.tool(
     "lint_files",
-    "[scan] Scan specific files for hardcoded secrets. Optionally auto-fix by replacing them with process.env references and storing the values in q-ring.",
+    [
+      "[scan] Inspect a specific list of files for hardcoded secrets and, when `fix` is true, replace each finding with `process.env.KEY` while storing the extracted value into the keyring.",
+      "Use to migrate a known set of files (e.g. just-changed files in a pre-commit hook) into q-ring; prefer `scan_codebase_for_secrets` for a whole-tree audit and `import_dotenv` to ingest an existing .env.",
+      "With `fix: false` this is read-only. With `fix: true` this MUTATES the listed source files in place (review with git diff!) and writes one new secret per finding to the keyring. Returns a JSON array of `{ file, line, key, value, kind }` findings, or 'No hardcoded secrets found in the specified files.'.",
+    ].join(" "),
     {
-      files: z.array(z.string()).describe("File paths to lint"),
+      files: z
+        .array(z.string())
+        .describe(
+          "Absolute or relative paths to lint. Non-existent paths surface as scan errors.",
+        ),
       fix: z
         .boolean()
         .optional()
         .default(false)
-        .describe("Auto-replace and store secrets"),
+        .describe(
+          "If true, rewrite the source files to read `process.env.KEY` and store the extracted value in the keyring. If false (default), only report findings.",
+        ),
       scope,
       projectPath,
       teamId,
@@ -140,7 +175,11 @@ export function registerToolingTools(server: McpServer): void {
 
   server.tool(
     "analyze_secrets",
-    "[agent] Analyze secret usage patterns and provide optimization suggestions including most accessed, stale, unused, and rotation recommendations.",
+    [
+      "[agent] Cross-reference the secrets in scope with recent audit events to produce a usage profile and rotation/retirement suggestions.",
+      "Use as a quarterly hygiene check or as input to a planner that decides what to rotate or delete; prefer `health_check` for decay-only triage and `audit_log` to inspect access timelines for one key.",
+      "Read-only; uses the most recent ~500 audit events. Returns JSON `{ total, expired, stale, neverAccessed: [...], noRotationFormat: [...], mostAccessed: [{ key, reads }] }`. `neverAccessed` and `noRotationFormat` are good candidates for cleanup or for adding rotation hints.",
+    ].join(" "),
     {
       scope,
       projectPath,
@@ -189,9 +228,19 @@ export function registerToolingTools(server: McpServer): void {
 
   server.tool(
     "status_dashboard",
-    "[dashboard] Launch the quantum status dashboard — a local SSE-driven web page showing live KPIs (secrets, env, protected, approvals, hooks, 24h reads, anomalies), health summary, environment, .q-ring.json manifest gaps, governance policy summary, sortable searchable secrets table, decay/superposition/entanglement/tunnel cards, active approvals & hooks, agent memory, anomaly alerts, and a filterable 24h audit feed. Returns the URL to open in a browser. Never exposes secret values.",
+    [
+      "[dashboard] Start a local web dashboard (`http://127.0.0.1:PORT`) that streams live KPIs, secret tables, manifest gaps, hooks, audit events, and anomalies via Server-Sent Events.",
+      "Use when an operator (or an agent on behalf of one) wants a richer visual surface than chat output; prefer `health_check` / `analyze_secrets` for one-shot text summaries inside the conversation.",
+      "Side effect: binds an HTTP server on the requested port (one process-wide instance — re-running returns the existing URL instead of starting a second server). Never exposes secret values. Returns the URL string to open in a browser.",
+    ].join(" "),
     {
-      port: z.number().optional().default(9876).describe("Port to serve on"),
+      port: z
+        .number()
+        .optional()
+        .default(9876)
+        .describe(
+          "TCP port to listen on (default 9876). Pick another port if 9876 is already in use; the call fails if binding errors.",
+        ),
     },
     async (params) => {
       const toolBlock = enforceToolPolicy("status_dashboard");
@@ -214,17 +263,25 @@ export function registerToolingTools(server: McpServer): void {
 
   server.tool(
     "agent_scan",
-    "[agent] Multi-project health pass: decay, staleness, audit anomalies, manifest gaps; returns JSON. Prefer health_check for a read-only scoped decay/anomaly text summary (no writes). Prefer detect_anomalies for audit-pattern spikes on one key. With autoRotate=true, overwrites expired secret values in the keyring (credential change—not undoable); leave false unless intentional rotation. Same policy gates as other MCP tools; no separate external auth.",
+    [
+      "[agent] Run a multi-project health pass that gathers decay status, audit anomalies, and `.q-ring.json` manifest gaps across one or more project paths and (optionally) auto-rotates expired secrets with freshly generated values.",
+      "Use as the canonical 'agent maintenance loop' across a portfolio of repos; prefer `health_check` for a single read-only scope, `detect_anomalies` for audit-only triage, and `check_project` for a single-project manifest check.",
+      "With `autoRotate=false` (default) this is read-only. With `autoRotate=true` it OVERWRITES expired secret values in the keyring with generated replacements — credential changes that may break upstream integrations until they are propagated. Subject to tool policy. Returns a JSON report of per-project findings and any rotations performed.",
+    ].join(" "),
     {
       autoRotate: z
         .boolean()
         .optional()
         .default(false)
-        .describe("Auto-rotate expired secrets with generated values"),
+        .describe(
+          "If true, replace expired secrets with newly generated values (using each secret's `rotationFormat`/`rotationPrefix`). Only enable when intentional rotation is desired — this is destructive on the upstream side.",
+        ),
       projectPaths: z
         .array(z.string())
         .optional()
-        .describe("Project paths to monitor"),
+        .describe(
+          "List of absolute project roots to scan. Defaults to `[server.cwd]` when omitted.",
+        ),
     },
     async (params) => {
       const toolBlock = enforceToolPolicy("agent_scan");
