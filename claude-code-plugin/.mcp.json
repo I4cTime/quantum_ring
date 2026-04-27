@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "q-ring": {
+      "type": "stdio",
+      "command": "qring-mcp",
+      "args": [],
+      "env": {}
+    }
+  }
+}

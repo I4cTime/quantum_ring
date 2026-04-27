@@ -33,6 +33,19 @@ package-lock.json
 !cursor-plugin/commands/*secret*.md
 !cursor-plugin/commands/*token*.md
 !.cursor/rules/secret-*.mdc
-
+!claude-code-plugin/.claude/skills/secret-*/
+!claude-code-plugin/.claude/skills/secret-*/**
+!claude-code-plugin/.claude/skills/exec-with-secrets/
+!claude-code-plugin/.claude/skills/exec-with-secrets/**
+!claude-code-plugin/.claude/agents/secret-*.md
+!claude-code-plugin/.claude/commands/*secret*.md
+!claude-code-plugin/.claude/commands/*token*.md
+!kiro-plugin/steering/qring-secret-*.md
+!kiro-plugin/steering/qring-*-secrets.md
+!kiro-plugin/steering/qring-exec-with-secrets.md
+marketing/
 # Local-only publishing checklist (not pushed to GitHub)
 docs/publishing-log.md
+
+# Local-only GTM / campaign drafts (see marketing/README.md)
+local/
