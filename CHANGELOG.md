@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.11.5] — 2026-04-27
+
+### Added
+- **Kiro Power pack** (`kiro-plugin/`) — steering files, hook templates, and `mcp.json` for [Kiro](https://kiro.dev); `pnpm run plugin:sync:kiro` copies into `~/.kiro` or a project `.kiro` path.
+- **Claude Code plugin** (`claude-code-plugin/`) — `CLAUDE.md`, project `.mcp.json`, agents, slash commands, skills, and hooks; `pnpm run plugin:sync:claude` for project install or `--user` for `~/.claude`.
+
+### Removed
+- **In-repo marketing site (`web/`)** — the embedded Next.js app was removed from this repository; public docs and marketing are served from **https://qring.i4c.studio**. Removed GitHub Actions workflows `deploy-pages.yml` and `nextjs.yml`, and the `web:extract-repo` script.
+
+### Changed
+- **`package.json` `homepage`** — now `https://qring.i4c.studio`.
+- **Cursor plugin / marketplace metadata** — logo URL points at repo-root `assets/logo.png` on GitHub raw (replacing deleted `web/public/` paths).
+- **README** — new “Editor plugins” section for Cursor, Kiro, and Claude Code, including sync commands and contributor notes.
+- **`.gitignore`** — ignore `marketing/` and `local/` for local-only drafts.
+- **MCP tool descriptions** — clearer operator guidance for `detect_anomalies`, `health_check`, `remove_hook`, `set_secret`, `delete_secret`, `entangle_secrets`, `disentangle_secrets`, and `agent_scan` (read-only versus mutating behavior and related tools).
+
 ## [0.11.0] — 2026-04-25
 
 ### Changed

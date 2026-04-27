@@ -12,7 +12,7 @@
       "name": "qring",
       "source": "cursor-plugin",
       "description": "Quantum keyring for AI agents — manage secrets, scan for leaks, rotate keys, and enforce policy directly from Cursor.",
-      "version": "0.10.1",
+      "version": "0.11.5",
       "keywords": [
         "secrets",
         "keyring",
@@ -22,7 +22,7 @@
         "dotenv",
         "credential-management"
       ],
-      "logo": "https://raw.githubusercontent.com/I4cTime/quantum_ring/main/web/public/assets/logo.png"
+      "logo": "https://raw.githubusercontent.com/I4cTime/quantum_ring/main/assets/logo.png"
     }
   ]
 }

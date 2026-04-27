@@ -61,7 +61,7 @@ export function registerAuditTools(server: McpServer): void {
 
   server.tool(
     "detect_anomalies",
-    "[audit] Scan for anomalous secret access patterns: burst reads, unusual-hour access. Returns findings and recommendations.",
+    "[audit] Read-only scan of audit history for burst reads and unusual-hour access (text lines per finding). Optional key filter. Use health_check for full decay inventory + anomaly count in scope; use agent_scan for multi-project JSON reports or optional auto-rotation. Does not mutate secrets.",
     {
       key: z.string().optional().describe("Check anomalies for a specific key"),
     },
@@ -79,7 +79,7 @@ export function registerAuditTools(server: McpServer): void {
 
   server.tool(
     "health_check",
-    "[health] Run a comprehensive health check on all secrets: decay status, staleness, anomalies, entropy assessment.",
+    "[health] Read-only scoped pass: decay/stale/expired counts, per-secret issue lines, plus audit-derived anomalies. No writes. Use check_project for .q-ring.json manifest compliance; use detect_anomalies for audit-pattern-only triage; use agent_scan for multi-project JSON or optional autoRotate credential replacement.",
     {
       scope,
       projectPath,

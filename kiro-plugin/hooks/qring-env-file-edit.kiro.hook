@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "q-ring · .env file edit",
+  "description": "When a .env file is created or edited, suggest importing into q-ring and verify .gitignore.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/.env",
+      "**/.env.*"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A .env file was just edited. (1) Verify that `.env*` patterns are present in the project's `.gitignore`; if not, warn the user and offer to add them. (2) Offer to call the q-ring MCP tool `import_dotenv` (with `skipExisting: true`) to migrate the values into q-ring where they are encrypted in the OS keychain. (3) If the project has a `.q-ring.json` manifest, suggest `env_generate` for future regeneration. Never echo the .env values back to the user."
+  }
+}

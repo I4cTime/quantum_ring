@@ -123,7 +123,7 @@ export function registerSecretTools(server: McpServer): void {
 
   server.tool(
     "set_secret",
-    "[secrets] Store a secret with optional quantum metadata: TTL (decay), environment state (superposition), description, tags.",
+    "[secrets] Create or overwrite a secret value plus optional metadata (TTL/decay, per-env superposition, description, tags). Overwrites existing values for the same key/scope; records access in the audit log. Use import_dotenv for bulk .env ingest. Subject to tool policy; no external rate limits beyond provider calls when validating elsewhere.",
     {
       key: z.string().describe("The secret key name"),
       value: z.string().describe("The secret value"),
@@ -206,7 +206,7 @@ export function registerSecretTools(server: McpServer): void {
 
   server.tool(
     "delete_secret",
-    "[secrets] Remove a secret from the keyring.",
+    "[secrets] Permanently remove a secret value from the keyring for the given scope/path (not recoverable from q-ring). Does not remove hooks, tunnels, or entanglement metadata alone—use remove_hook, tunnel_destroy, or disentangle_secrets respectively. Returns success or not-found text; subject to tool policy.",
     {
       key: z.string().describe("The secret key name"),
       scope,
@@ -441,7 +441,7 @@ export function registerSecretTools(server: McpServer): void {
 
   server.tool(
     "entangle_secrets",
-    "[secrets] Create a quantum entanglement between two secrets. When the source is rotated/updated, the target automatically receives the same value.",
+    "[secrets] Link two keys so source updates/rotations propagate the same value to the target (mutates metadata; future writes sync). Reverse with disentangle_secrets without deleting values; do not confuse with set_secret (single-key write). Subject to tool policy.",
     {
       sourceKey: z.string().describe("Source secret key"),
       targetKey: z.string().describe("Target secret key"),
@@ -478,7 +478,7 @@ export function registerSecretTools(server: McpServer): void {
 
   server.tool(
     "disentangle_secrets",
-    "[secrets] Remove a quantum entanglement between two secrets. They will no longer synchronize on rotation.",
+    "[secrets] Remove the sync link between two keys so rotations stop propagating. Does not delete either secret—use delete_secret to erase values. Contrast entangle_secrets (creates link). Safe if the link was already absent; updates metadata; subject to tool policy.",
     {
       sourceKey: z.string().describe("Source secret key"),
       targetKey: z.string().describe("Target secret key"),
