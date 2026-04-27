@@ -1,0 +1,34 @@
+{
+  "enabled": true,
+  "name": "q-ring · Scan on save",
+  "description": "After a source file is saved, lint it for hardcoded secrets via q-ring and offer to auto-fix.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.js",
+      "**/*.jsx",
+      "**/*.mjs",
+      "**/*.cjs",
+      "**/*.py",
+      "**/*.go",
+      "**/*.rs",
+      "**/*.rb",
+      "**/*.java",
+      "**/*.kt",
+      "**/*.cs",
+      "**/*.php",
+      "**/*.sh",
+      "**/*.json",
+      "**/*.yml",
+      "**/*.yaml",
+      "**/*.md"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A file in this workspace was just saved. Call the q-ring MCP tool `lint_files` for the saved file(s) (do NOT scan the entire repo). If hardcoded secrets are found, summarize the findings concisely and ask whether to call `lint_files` again with `fix: true` to migrate them into q-ring (replacing literal values with `process.env.KEY` style references). Skip binary assets, lockfiles, minified bundles, and anything under `node_modules`, `dist`, `build`, `.git`, or `coverage`."
+  }
+}

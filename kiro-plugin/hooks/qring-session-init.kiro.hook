@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "q-ring · Session init",
+  "description": "Manual button: load the project's q-ring context — secrets, manifest, policy, expired keys.",
+  "version": "1",
+  "when": {
+    "type": "userTriggered",
+    "buttonLabel": "q-ring: load project context"
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "Call the q-ring MCP tool `get_project_context` for the current workspace. Summarize: detected environment, declared manifest secrets (present / missing / expired / stale), policy posture (mcp / exec / secrets), and any anomalies. Do NOT print any secret values. End with one or two concrete next-step suggestions (e.g. `#qring-cmd-rotate-expired` if anything is expired, `#qring-cmd-setup-project` if there is no manifest)."
+  }
+}

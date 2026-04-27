@@ -95,7 +95,7 @@ export function registerHookTools(server: McpServer): void {
 
   server.tool(
     "remove_hook",
-    "[hooks] Remove a registered hook by ID.",
+    "[hooks] Remove a lifecycle hook entry by id from the hook registry only (stops callbacks; does not touch secret values). Call list_hooks first for ids. Contrast delete_secret (credential removal) or tunnel_destroy (ephemeral tunnel). Returns success or not-found; subject to tool policy.",
     {
       id: z.string().describe("Hook ID to remove"),
     },

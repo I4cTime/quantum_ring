@@ -811,20 +811,65 @@ Add to `~/.claude/claude_desktop_config.json`:
 }
 ```
 
-## Cursor Plugin
+## Editor Plugins
+
+The q-ring repo ships three first-party editor packs — each one adds rules/steering, agents, commands, skills, hooks, and the MCP connector to its host editor.
+
+| Plugin | Editor | Highlights |
+|--------|--------|-----------|
+| [`cursor-plugin/`](cursor-plugin/README.md) | [Cursor](https://cursor.com) | 3 rules, 5 skills, 2 agents, 8 slash commands, 3 hooks, MCP autoconnect |
+| [`kiro-plugin/`](kiro-plugin/README.md) | [Kiro](https://kiro.dev) | Official [Power](https://kiro.dev/docs/powers/create/) layout: `POWER.md`, root `mcp.json`, `steering/`, `hooks/`; or flatten with `plugin:sync:kiro` |
+| [`claude-code-plugin/`](claude-code-plugin/README.md) | [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) | `CLAUDE.md` memory, project `.mcp.json`, 2 subagents, 8 slash commands, 5 skills, 3 hook scripts |
+
+### Cursor Plugin
 
 The **q-ring Cursor Plugin** brings quantum secret management directly into your IDE with rules, skills, agents, commands, hooks, and a built-in MCP connector.
 
 | Component | What it does |
 |-----------|-------------|
 | **3 Rules** | Always-on guidance: never hardcode secrets, use q-ring for all ops, warn about `.env` files |
-| **4 Skills** | Auto-triggered by context: secret management, scanning, rotation, project onboarding |
+| **5 Skills** | Auto-triggered by context: secret management, scanning, rotation, project onboarding, exec-with-secrets |
 | **2 Agents** | `security-auditor` (proactive monitoring) and `secret-ops` (day-to-day assistant) |
-| **5 Commands** | `/qring:scan-secrets`, `/qring:health-check`, `/qring:rotate-expired`, `/qring:setup-project`, `/qring:teleport-secrets` |
-| **2 Hooks** | `afterFileEdit` (lint scan), `sessionStart` (project context) |
+| **8 Commands** | `/qring:scan-secrets`, `/qring:health-check`, `/qring:rotate-expired`, `/qring:setup-project`, `/qring:teleport-secrets`, `/qring:dashboard`, `/qring:exec-safe`, `/qring:analyze` |
+| **3 Hooks** | `afterFileEdit` (lint scan), `sessionStart` (project context), `beforeShellExecution` (`.env` guard) |
 | **MCP Connector** | Auto-connects to `qring-mcp` via stdio — all 44 tools available |
 
 Install from the Cursor marketplace or see [`cursor-plugin/README.md`](cursor-plugin/README.md) for manual setup.
+
+### Kiro Plugin (Power)
+
+The [`kiro-plugin/`](kiro-plugin/) directory is a Kiro **Power** per [Create powers](https://kiro.dev/docs/powers/create/): `POWER.md` (metadata, onboarding, steering map), root [`mcp.json`](kiro-plugin/mcp.json) (MCP server must match the server name referenced in the power), and [`steering/`](kiro-plugin/steering/) for workflows. Install from Kiro → **Powers** → **Add power from Local Path** and select `kiro-plugin`, or publish the folder on GitHub and use **Add power from GitHub**.
+
+Always-on steering blocks hardcoded secrets and routes everything through q-ring; `manual` steering files act as agent personas (`#qring-secret-ops`, `#qring-security-auditor`), skill packs, and slash-style commands (`#qring-cmd-scan-secrets`, etc.). Optional hooks live in `hooks/` for copy into `.kiro/hooks/`.
+
+```bash
+# Alternative: flatten into ~/.kiro (settings + steering + hooks)
+pnpm run plugin:sync:kiro
+
+# Or scope to a single project
+pnpm run plugin:sync:kiro -- /path/to/your/project/.kiro
+```
+
+See [`kiro-plugin/README.md`](kiro-plugin/README.md) for the full breakdown.
+
+### Claude Code Plugin
+
+For [Claude Code](https://docs.claude.com/en/docs/claude-code/overview), q-ring ships a `CLAUDE.md` memory file, a project-scoped `.mcp.json`, two [subagents](https://docs.claude.com/en/docs/claude-code/sub-agents) (`secret-ops`, `security-auditor`), eight [slash commands](https://docs.claude.com/en/docs/claude-code/slash-commands) (`/qring-scan-secrets`, `/qring-health-check`, …), five [skills](https://docs.claude.com/en/docs/claude-code/skills), and three [hooks](https://docs.claude.com/en/docs/claude-code/hooks) (post-edit lint reminder, pre-Bash `.env` guard, session-start context primer).
+
+```bash
+# Install into the current project ($PWD)
+pnpm run plugin:sync:claude
+
+# Install agents/commands/skills/hooks at user scope (~/.claude)
+pnpm run plugin:sync:claude -- --user
+
+# Or target a specific project
+pnpm run plugin:sync:claude -- /path/to/your/project
+```
+
+Existing `CLAUDE.md`, `.mcp.json`, or `.claude/settings.json` files are never silently overwritten — the script writes a `<filename>.qring-template` next to them so you can merge by hand. Pass `--force` to overwrite.
+
+See [`claude-code-plugin/README.md`](claude-code-plugin/README.md) for the full breakdown.
 
 ## Architecture
 
@@ -900,7 +945,11 @@ Optional per-project configuration:
 - Run **`pnpm run lint`**, **`pnpm run typecheck`**, and **`pnpm run test:ci`** before opening a PR.
 - Tests or sandboxes can point the audit log elsewhere with **`QRING_AUDIT_DIR`** (directory is created if missing); default is `~/.config/q-ring/audit.jsonl`.
 - Optional local pre-commit: **`qring hook:install`** (uses this package’s `precommit` hook when `qring` is on your `PATH`).
-- After changing the Cursor plugin under **`cursor-plugin/`**, run **`pnpm run plugin:sync`** to copy it to `~/.cursor/plugins/local/my-plugin` (or pass a custom path). See also [docs/cli-mcp-parity.md](docs/cli-mcp-parity.md).
+- After changing one of the editor plugins:
+  - **Cursor:** `pnpm run plugin:sync` copies `cursor-plugin/` to `~/.cursor/plugins/local/my-plugin` (or pass a custom path).
+  - **Kiro:** `pnpm run plugin:sync:kiro` copies `kiro-plugin/mcp.json` → `~/.kiro/settings/mcp.json`, plus `steering/` and `hooks/` (or pass a project `.kiro` path). Prefer adding `kiro-plugin/` as a [Power](https://kiro.dev/docs/powers/create/) from the Powers panel instead.
+  - **Claude Code:** `pnpm run plugin:sync:claude` copies `claude-code-plugin/` into the current directory (or pass a project path; add `--user` to install at `~/.claude/`).
+- See also [docs/cli-mcp-parity.md](docs/cli-mcp-parity.md).
 
 ## 📜 License
 

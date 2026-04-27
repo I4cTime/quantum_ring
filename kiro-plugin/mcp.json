@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "q-ring": {
+      "command": "qring-mcp",
+      "args": [],
+      "env": {},
+      "disabled": false,
+      "autoApprove": [
+        "list_secrets",
+        "has_secret",
+        "inspect_secret",
+        "detect_environment",
+        "get_project_context",
+        "list_providers",
+        "list_hooks",
+        "get_policy_summary",
+        "audit_log",
+        "verify_audit_chain",
+        "health_check",
+        "analyze_secrets"
+      ]
+    }
+  }
+}

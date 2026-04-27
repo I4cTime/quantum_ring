@@ -214,7 +214,7 @@ export function registerToolingTools(server: McpServer): void {
 
   server.tool(
     "agent_scan",
-    "[agent] Run an autonomous agent health scan: checks decay, staleness, anomalies, and optionally auto-rotates expired secrets. Returns a structured report.",
+    "[agent] Multi-project health pass: decay, staleness, audit anomalies, manifest gaps; returns JSON. Prefer health_check for a read-only scoped decay/anomaly text summary (no writes). Prefer detect_anomalies for audit-pattern spikes on one key. With autoRotate=true, overwrites expired secret values in the keyring (credential change—not undoable); leave false unless intentional rotation. Same policy gates as other MCP tools; no separate external auth.",
     {
       autoRotate: z
         .boolean()
