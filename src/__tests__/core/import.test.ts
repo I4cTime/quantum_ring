@@ -50,4 +50,11 @@ describe("parseDotenv", () => {
     const result = parseDotenv('TAG="v1.0#beta"');
     expect(result.get("TAG")).toBe("v1.0#beta");
   });
+
+  it("preserves a hash with no preceding space in unquoted values", () => {
+    const result = parseDotenv("COLOR=#ff0000");
+    expect(result.get("COLOR")).toBe("#ff0000");
+    const r2 = parseDotenv("FRAGMENT=foo#bar");
+    expect(r2.get("FRAGMENT")).toBe("foo#bar");
+  });
 });

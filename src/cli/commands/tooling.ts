@@ -168,8 +168,7 @@ export function registerToolingCommands(program: Command): void {
       const { platform } = await import("node:os");
 
       const port = Number(cmd.port);
-      const { close } = startDashboardServer({ port });
-      const url = `http://127.0.0.1:${port}`;
+      const { close, url } = startDashboardServer({ port });
 
       console.log(
         `\n  ${SYMBOLS.zap} ${c.bold("q-ring quantum status dashboard")}\n`,

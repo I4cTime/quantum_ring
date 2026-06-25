@@ -40,6 +40,21 @@ describe("generateSecret", () => {
     expect(s.length).toBe(24);
   });
 
+  it("guarantees every character class even at short lengths, across many runs", () => {
+    for (let i = 0; i < 500; i++) {
+      const pw = generateSecret({ format: "password", length: 8 });
+      expect(pw).toHaveLength(8);
+      expect(/[A-Z]/.test(pw)).toBe(true);
+      expect(/[a-z]/.test(pw)).toBe(true);
+      expect(/[0-9]/.test(pw)).toBe(true);
+      expect(/[^A-Za-z0-9]/.test(pw)).toBe(true);
+    }
+  });
+
+  it("does not throw for very short password lengths", () => {
+    expect(() => generateSecret({ format: "password", length: 2 })).not.toThrow();
+  });
+
   it("produces unique values on successive calls", () => {
     const a = generateSecret();
     const b = generateSecret();

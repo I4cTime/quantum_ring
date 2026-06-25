@@ -6,6 +6,7 @@
  */
 
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from "node:http";
+import { randomBytes, timingSafeEqual } from "node:crypto";
 import { listSecrets } from "./keyring.js";
 import { checkDecay, type DecayStatus, type QuantumEnvelope } from "./envelope.js";
 import { listEntanglements, type EntanglementPair } from "./entanglement.js";
@@ -385,14 +386,25 @@ export interface DashboardServerOptions {
   port?: number;
 }
 
+function timingSafeStringEqual(a: string, b: string): boolean {
+  const ab = Buffer.from(a, "utf8");
+  const bb = Buffer.from(b, "utf8");
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
+
 export function startDashboardServer(
   options: DashboardServerOptions = {},
-): { port: number; close: () => void; server: Server } {
+): { port: number; token: string; url: string; close: () => void; server: Server } {
   const port = options.port ?? 9876;
   const clients = new Set<ServerResponse>();
   let intervalHandle: ReturnType<typeof setInterval> | null = null;
 
-  const html = getDashboardHtml();
+  // Per-launch bearer token. The dashboard binds to 127.0.0.1, but on a shared
+  // host any local user/process could otherwise read key names, the audit log,
+  // and approvals. Every route requires this token (passed as ?token=).
+  const token = randomBytes(24).toString("base64url");
+  const html = getDashboardHtml(token);
 
   function broadcast() {
     const snapshot = collectSnapshot();
@@ -417,11 +429,21 @@ export function startDashboardServer(
 
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
     let pathname: string;
+    let query: URLSearchParams;
     try {
-      ({ pathname } = new URL(req.url ?? "/", "http://127.0.0.1"));
+      const parsed = new URL(req.url ?? "/", "http://127.0.0.1");
+      pathname = parsed.pathname;
+      query = parsed.searchParams;
     } catch {
       res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
       res.end("Bad Request: invalid URL");
+      return;
+    }
+
+    const provided = query.get("token") ?? "";
+    if (!timingSafeStringEqual(provided, token)) {
+      res.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Forbidden: missing or invalid token");
       return;
     }
 
@@ -462,6 +484,8 @@ export function startDashboardServer(
 
   return {
     port,
+    token,
+    url: `http://127.0.0.1:${port}/?token=${token}`,
     close: () => {
       if (intervalHandle) clearInterval(intervalHandle);
       for (const res of clients) {

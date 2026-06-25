@@ -51,8 +51,13 @@ export function parseDotenv(content: string): Map<string, string> {
     };
     value = value.replace(/\\([nrt"\\])/g, (_, ch) => escapeMap[ch] ?? ch);
 
-    if (value.includes("#") && !line.includes('"') && !line.includes("'")) {
-      value = value.split("#")[0].trim();
+    // Strip inline comments only when the `#` is preceded by whitespace (the
+    // dotenv convention), so unquoted values like `foo#bar` are preserved.
+    if (!line.includes('"') && !line.includes("'")) {
+      const commentMatch = value.match(/\s#/);
+      if (commentMatch && commentMatch.index !== undefined) {
+        value = value.slice(0, commentMatch.index).trim();
+      }
     }
 
     if (key) result.set(key, value);
@@ -70,9 +75,18 @@ export function importDotenv(
 ): ImportResult {
   let content: string;
 
-  try {
-    content = readFileSync(filePathOrContent, "utf8");
-  } catch {
+  // The file-path convenience (read from disk if the arg is a path) is only
+  // safe for the trusted local CLI. For MCP/agent/api callers the argument is
+  // always treated as literal .env content — otherwise an agent could pass a
+  // path like ~/.aws/credentials and exfiltrate it through the keyring.
+  const source = options.source ?? "cli";
+  if (source === "cli") {
+    try {
+      content = readFileSync(filePathOrContent, "utf8");
+    } catch {
+      content = filePathOrContent;
+    }
+  } else {
     content = filePathOrContent;
   }
 

@@ -7,6 +7,7 @@
 
 import { lookup } from "node:dns/promises";
 import * as dns from "node:dns";
+import { lookup as dnsLookup, type LookupAddress } from "node:dns";
 import { isIPv4, isIPv6 } from "node:net";
 
 /** `lookupSync` exists at runtime (Node 18+); some @types/node versions omit it from typings. */
@@ -71,6 +72,56 @@ export async function checkSSRF(url: string): Promise<string | null> {
     // DNS failure will surface as a request error downstream
   }
   return null;
+}
+
+type GuardedLookupCallback = (
+  err: NodeJS.ErrnoException | null,
+  address: string | LookupAddress[],
+  family?: number,
+) => void;
+
+/**
+ * A `lookup` function for http(s).request that re-validates the resolved
+ * address at connection time. This closes the DNS-rebinding TOCTOU window
+ * where a hostname passes {@link checkSSRF} but resolves to a private/loopback
+ * address moments later when the socket actually connects. Fails closed.
+ */
+export function guardedLookup(
+  hostname: string,
+  options: dns.LookupOptions,
+  callback: GuardedLookupCallback,
+): void {
+  if (process.env.Q_RING_ALLOW_PRIVATE_HOOKS === "1") {
+    (dnsLookup as (h: string, o: dns.LookupOptions, cb: GuardedLookupCallback) => void)(
+      hostname,
+      options,
+      callback,
+    );
+    return;
+  }
+
+  (dnsLookup as (h: string, o: dns.LookupOptions, cb: GuardedLookupCallback) => void)(
+    hostname,
+    options,
+    (err, address, family) => {
+      if (err) return callback(err, address, family);
+      const list = Array.isArray(address)
+        ? address
+        : [{ address, family: family ?? 0 }];
+      for (const a of list) {
+        if (isPrivateIP(a.address)) {
+          const blocked: NodeJS.ErrnoException = Object.assign(
+            new Error(
+              `Blocked: "${hostname}" resolved to private address ${a.address} at connect time.`,
+            ),
+            { code: "EQRINGSSRF" },
+          );
+          return callback(blocked, address, family);
+        }
+      }
+      callback(null, address, family);
+    },
+  );
 }
 
 /**
