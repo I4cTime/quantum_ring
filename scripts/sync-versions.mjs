@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Sync version from package.json into plugin + marketplace + SECURITY.md supported table.
+ * Sync version from package.json into plugin + marketplace + server.json
+ * (MCP Registry) + SECURITY.md supported table.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -23,6 +24,17 @@ if (marketplace.plugins?.[0]) {
 }
 writeFileSync(marketplacePath, JSON.stringify(marketplace, null, 2) + "\n", "utf8");
 
+// server.json drives the MCP Registry publish — keep its top-level version and
+// every npm package entry in lockstep, or `mcp-publisher` rejects a stale or
+// duplicate version at release time.
+const serverJsonPath = join(root, "server.json");
+const serverJson = JSON.parse(readFileSync(serverJsonPath, "utf8"));
+serverJson.version = v;
+for (const p of serverJson.packages ?? []) {
+  if (p.registryType === "npm" || p.identifier === pkg.name) p.version = v;
+}
+writeFileSync(serverJsonPath, JSON.stringify(serverJson, null, 2) + "\n", "utf8");
+
 const securityPath = join(root, "SECURITY.md");
 let sec = readFileSync(securityPath, "utf8");
 const parts = v.split(".");
@@ -34,4 +46,6 @@ sec = sec.replace(
 );
 writeFileSync(securityPath, sec, "utf8");
 
-console.log(`sync-versions: set ${v} in plugin.json, marketplace.json, SECURITY.md`);
+console.log(
+  `sync-versions: set ${v} in plugin.json, marketplace.json, server.json, SECURITY.md`,
+);
