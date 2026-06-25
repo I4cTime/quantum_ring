@@ -1,5 +1,11 @@
-import { describe, it, expect } from "vitest";
-import { isPrivateIP, checkSSRF, checkSSRFSync } from "../../core/ssrf.js";
+import { describe, it, expect, afterEach } from "vitest";
+import { isPrivateIP, checkSSRF, checkSSRFSync, guardedLookup } from "../../core/ssrf.js";
+
+function lookupVia(host: string): Promise<{ err: NodeJS.ErrnoException | null }> {
+  return new Promise((resolve) => {
+    guardedLookup(host, {}, (err) => resolve({ err }));
+  });
+}
 
 describe("isPrivateIP", () => {
   it("blocks 127.x.x.x (loopback)", () => {
@@ -93,5 +99,32 @@ describe("checkSSRFSync", () => {
 
   it("returns null for hostnames (no DNS in sync mode)", () => {
     expect(checkSSRFSync("https://example.com/path")).toBeNull();
+  });
+});
+
+describe("guardedLookup (connect-time DNS-rebinding guard)", () => {
+  const orig = process.env.Q_RING_ALLOW_PRIVATE_HOOKS;
+  afterEach(() => {
+    if (orig === undefined) delete process.env.Q_RING_ALLOW_PRIVATE_HOOKS;
+    else process.env.Q_RING_ALLOW_PRIVATE_HOOKS = orig;
+  });
+
+  it("blocks resolution to a private/loopback address", async () => {
+    delete process.env.Q_RING_ALLOW_PRIVATE_HOOKS;
+    const { err } = await lookupVia("127.0.0.1");
+    expect(err).not.toBeNull();
+    expect(err?.code).toBe("EQRINGSSRF");
+  });
+
+  it("allows resolution to a public address", async () => {
+    delete process.env.Q_RING_ALLOW_PRIVATE_HOOKS;
+    const { err } = await lookupVia("8.8.8.8");
+    expect(err).toBeNull();
+  });
+
+  it("respects the Q_RING_ALLOW_PRIVATE_HOOKS override", async () => {
+    process.env.Q_RING_ALLOW_PRIVATE_HOOKS = "1";
+    const { err } = await lookupVia("127.0.0.1");
+    expect(err).toBeNull();
   });
 });

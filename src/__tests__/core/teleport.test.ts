@@ -1,5 +1,33 @@
 import { describe, it, expect } from "vitest";
+import { createCipheriv, pbkdf2Sync, randomBytes } from "node:crypto";
 import { teleportPack, teleportUnpack } from "../../core/teleport.js";
+
+/** Build a pre-bump bundle (PBKDF2 100k, no `iter` field) the old code produced. */
+function legacyBundle(
+  secrets: { key: string; value: string; scope?: string }[],
+  passphrase: string,
+): string {
+  const plaintext = JSON.stringify({
+    secrets,
+    exportedAt: new Date().toISOString(),
+  });
+  const salt = randomBytes(32);
+  const iv = randomBytes(12);
+  const key = pbkdf2Sync(passphrase, salt, 100000, 32, "sha512");
+  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  const bundle = {
+    v: 1,
+    data: encrypted.toString("base64"),
+    salt: salt.toString("base64"),
+    iv: iv.toString("base64"),
+    tag: tag.toString("base64"),
+    createdAt: new Date().toISOString(),
+    count: secrets.length,
+  };
+  return Buffer.from(JSON.stringify(bundle)).toString("base64");
+}
 
 describe("teleport pack/unpack", () => {
   const secrets = [
@@ -55,5 +83,20 @@ describe("teleport pack/unpack", () => {
     const bundle = teleportPack([], passphrase);
     const payload = teleportUnpack(bundle, passphrase);
     expect(payload.secrets).toHaveLength(0);
+  });
+
+  it("records the PBKDF2 iteration count in new bundles", () => {
+    const bundle = teleportPack(secrets, passphrase);
+    const inner = JSON.parse(
+      Buffer.from(bundle, "base64").toString("utf8"),
+    ) as { iter?: number };
+    expect(inner.iter).toBe(210000);
+  });
+
+  it("still decrypts legacy bundles that predate the iteration bump", () => {
+    const bundle = legacyBundle(secrets, passphrase);
+    const payload = teleportUnpack(bundle, passphrase);
+    expect(payload.secrets[0].value).toBe("sk-abc123");
+    expect(payload.secrets[1].value).toBe("p@ssw0rd");
   });
 });

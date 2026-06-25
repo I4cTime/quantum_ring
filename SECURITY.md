@@ -4,8 +4,8 @@
 
 | Version | Supported |
 |---------|-----------|
-| 0.11.x   | Yes       |
-| < 0.11   | No        |
+| 0.12.x   | Yes       |
+| < 0.12   | No        |
 
 ## Reporting a Vulnerability
 
@@ -50,7 +50,10 @@ The following areas are in scope for security reports:
 - **Tunneling** — leaks of ephemeral in-memory secrets to disk or logs.
 - **Teleportation** — weaknesses in the encrypted sharing protocol.
 - **Entanglement** — unintended exposure during linked secret rotation.
-- **MCP server** — unauthorized access to secrets via the MCP transport.
+- **MCP server** — unauthorized access to secrets via the MCP transport, including bypasses of the approval gate, governance policy, or per-key restrictions.
+- **Governance & approvals** — escaping `.q-ring.json` policy, forging/bypassing approval tokens, or reading protected secrets via bulk operations (`export_secrets`, `teleport_pack`).
+- **Outbound requests** — SSRF via hook/validation URLs (including DNS-rebinding) to private/loopback ranges.
+- **Status dashboard** — unauthorized access to the local dashboard, its `/api/status` snapshot, or SSE stream.
 - **CLI** — command injection, argument parsing flaws, or privilege escalation.
 
 ## Out of Scope

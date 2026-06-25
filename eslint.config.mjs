@@ -8,6 +8,23 @@ export default tseslint.config(
     ignores: ["dist/**", "node_modules/**", "coverage/**"],
   },
   {
+    // Browser client for the status dashboard (bundled into the served HTML).
+    files: ["src/dashboard-client/**/*.js"],
+    languageOptions: {
+      globals: {
+        window: "readonly",
+        document: "readonly",
+        console: "readonly",
+        fetch: "readonly",
+        EventSource: "readonly",
+        setInterval: "readonly",
+        clearInterval: "readonly",
+        setTimeout: "readonly",
+        clearTimeout: "readonly",
+      },
+    },
+  },
+  {
     rules: {
       "@typescript-eslint/no-unused-vars": [
         "warn",
