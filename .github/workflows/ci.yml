@@ -22,7 +22,7 @@ jobs:
 
       # pnpm version is pinned via the "packageManager" field in package.json so
       # CI resolves identically to local (no surprise pnpm-latest policy drift).
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
       - uses: actions/setup-node@v4
         with:
