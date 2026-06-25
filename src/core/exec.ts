@@ -67,6 +67,12 @@ export interface ExecResult {
   stderr: string;
 }
 
+/**
+ * Best-effort output redaction: replaces verbatim occurrences of known secret
+ * values (>5 chars) in a child process's stdout/stderr. This is a safety net,
+ * NOT a guarantee — it cannot catch secrets that the child has transformed
+ * (base64/hex/URL-encoded, split across writes beyond the tail window, etc.).
+ */
 export class RedactionTransform extends Transform {
   private patterns: { value: string; replacement: string }[] = [];
   private tail: string = "";
@@ -213,7 +219,12 @@ export async function execCommand(opts: ExecOptions): Promise<ExecResult> {
       "curl", "wget", "ping", "nc", "netcat", "ssh", "telnet", "ftp", "dig", "nslookup",
     ]);
 
-    if (profile.allowNetwork === false && networkTools.has(opts.command)) {
+    // Compare on the command basename so absolute paths like /usr/bin/curl are
+    // still caught. (Interpreter-based egress — python -c, node -e — is out of
+    // scope here; this is best-effort, not a hard sandbox.)
+    const commandBase = opts.command.split(/[\\/]/).pop() ?? opts.command;
+
+    if (profile.allowNetwork === false && networkTools.has(commandBase)) {
       const msg = `[QRING] Execution blocked: network access is disabled for profile "${profile.name}", command "${opts.command}" is considered network-related`;
       if (opts.captureOutput) {
         return resolve({ code: 126, stdout: "", stderr: msg });

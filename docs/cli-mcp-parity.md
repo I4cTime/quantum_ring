@@ -17,10 +17,15 @@ approval gates.
   `package.json` next to `dist/`).
 - **Policy enforcement:** Every MCP tool runs `enforceToolPolicy` before
   executing; the CLI goes through the same `checkToolPolicy`, `checkExecPolicy`,
-  and `checkKeyReadPolicy` helpers in `src/core/policy.ts`.
+  and `checkKeyReadPolicy` helpers in `src/core/policy.ts`. **Policy root
+  differs by surface:** the MCP server pins policy resolution to its launch CWD
+  (`setPolicyRoot`, called in `src/mcp/server.ts`) so an agent can't escape
+  governance via a crafted `projectPath`; the CLI resolves policy from the
+  caller's `projectPath`/CWD as usual.
 - **SSRF protection:** All outbound HTTP (hooks, JIT providers, provider
-  validation) routes through `src/utils/http-request.ts` and, for
-  user-configurable URLs, `src/core/ssrf.ts`.
+  validation) routes through `src/utils/http-request.ts`, which re-validates the
+  resolved IP at connect time via `guardedLookup`; user-configurable URLs are
+  additionally pre-checked through `src/core/ssrf.ts`.
 
 ## Command ↔ tool map
 

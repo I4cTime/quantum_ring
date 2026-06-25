@@ -5,6 +5,8 @@
 
 import { request as httpsRequest } from "node:https";
 import { request as httpRequestPlain } from "node:http";
+import type { LookupFunction } from "node:net";
+import { guardedLookup } from "../core/ssrf.js";
 
 export interface HttpRequestOptions {
   url: string;
@@ -54,7 +56,13 @@ export function httpRequest(opts: HttpRequestOptions): Promise<HttpResponse> {
 
     const req = reqFn(
       url,
-      { method, headers: reqHeaders, timeout: timeoutMs },
+      {
+        method,
+        headers: reqHeaders,
+        timeout: timeoutMs,
+        // Re-validate the resolved IP at connect time (DNS-rebinding guard).
+        lookup: guardedLookup as unknown as LookupFunction,
+      },
       (res) => {
         const chunks: Buffer[] = [];
         let totalBytes = 0;

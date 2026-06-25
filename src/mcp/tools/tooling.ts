@@ -224,7 +224,7 @@ export function registerToolingTools(server: McpServer): void {
 
   // One process-scoped instance; reusing across tool invocations avoids
   // leaking listeners when the MCP client pings `status_dashboard` twice.
-  let dashboardInstance: { port: number; close: () => void } | null = null;
+  let dashboardInstance: { port: number; url: string; close: () => void } | null = null;
 
   server.tool(
     "status_dashboard",
@@ -248,7 +248,7 @@ export function registerToolingTools(server: McpServer): void {
 
       if (dashboardInstance) {
         return text(
-          `Dashboard already running at http://127.0.0.1:${dashboardInstance.port}`,
+          `Dashboard already running at ${dashboardInstance.url}`,
         );
       }
 
@@ -256,7 +256,7 @@ export function registerToolingTools(server: McpServer): void {
       dashboardInstance = startDashboardServer({ port: params.port });
 
       return text(
-        `Dashboard started at http://127.0.0.1:${dashboardInstance.port}\nOpen this URL in a browser to see live quantum status.`,
+        `Dashboard started at ${dashboardInstance.url}\nOpen this URL in a browser to see live quantum status. The token is required for access.`,
       );
     },
   );

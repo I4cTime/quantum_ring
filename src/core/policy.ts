@@ -6,6 +6,8 @@
  * exec allowlists, and mandatory metadata requirements.
  */
 
+import { statSync } from "node:fs";
+import { join } from "node:path";
 import { readProjectConfig } from "./collapse.js";
 
 export interface PolicyConfig {
@@ -35,17 +37,43 @@ export interface PolicyDecision {
   policySource: string;
 }
 
-let cachedPolicy: { path: string; policy: PolicyConfig } | null = null;
+let cachedPolicy: { path: string; mtimeMs: number; policy: PolicyConfig } | null = null;
+
+/**
+ * Trusted policy root. When set (by the MCP server at startup), all policy
+ * resolution is anchored here and ignores caller-supplied projectPath. This
+ * prevents an MCP agent from escaping project governance by pointing
+ * projectPath at a directory that has no (or a weaker) `.q-ring.json`.
+ */
+let policyRoot: string | null = null;
+
+export function setPolicyRoot(root: string): void {
+  policyRoot = root;
+  cachedPolicy = null;
+}
+
+function resolvePolicyPath(projectPath?: string): string {
+  return policyRoot ?? projectPath ?? process.cwd();
+}
+
+function configMtime(pp: string): number {
+  try {
+    return statSync(join(pp, ".q-ring.json")).mtimeMs;
+  } catch {
+    return 0; // file absent — stable sentinel
+  }
+}
 
 export function loadPolicy(projectPath?: string): PolicyConfig {
-  const pp = projectPath ?? process.cwd();
-  if (cachedPolicy && cachedPolicy.path === pp) {
+  const pp = resolvePolicyPath(projectPath);
+  const mtimeMs = configMtime(pp);
+  if (cachedPolicy && cachedPolicy.path === pp && cachedPolicy.mtimeMs === mtimeMs) {
     return cachedPolicy.policy;
   }
 
   const config = readProjectConfig(pp);
   const policy: PolicyConfig = (config as any)?.policy ?? {};
-  cachedPolicy = { path: pp, policy };
+  cachedPolicy = { path: pp, mtimeMs, policy };
   return policy;
 }
 
@@ -162,7 +190,15 @@ export function checkExecPolicy(command: string, projectPath?: string): PolicyDe
   if (!policy.exec) return { allowed: true, policySource: "no-policy" };
 
   if (policy.exec.denyCommands) {
-    const denied = policy.exec.denyCommands.find((d) => command.includes(d));
+    // Match on token/path boundaries so denying "rm" does not also block
+    // "charm" or "npm", while still catching "/usr/bin/rm" and "rm -rf".
+    const denied = policy.exec.denyCommands.find((d) => {
+      const pattern = new RegExp(
+        `(^|[\\s/])${d.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\s|$)`,
+        "i",
+      );
+      return pattern.test(command);
+    });
     if (denied) {
       return {
         allowed: false,
@@ -173,7 +209,8 @@ export function checkExecPolicy(command: string, projectPath?: string): PolicyDe
   }
 
   if (policy.exec.allowCommands) {
-    const allowed = policy.exec.allowCommands.some((a) => command.startsWith(a));
+    const normalized = command.trimStart();
+    const allowed = policy.exec.allowCommands.some((a) => normalized.startsWith(a));
     if (!allowed) {
       return {
         allowed: false,

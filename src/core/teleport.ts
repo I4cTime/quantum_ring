@@ -19,7 +19,10 @@ const KEY_LENGTH = 32;
 /** NIST / OpenSSL recommendation for AES-GCM (96-bit nonce). */
 const IV_LENGTH = 12;
 const SALT_LENGTH = 32;
-const PBKDF2_ITERATIONS = 100000;
+/** OWASP-recommended floor for PBKDF2-HMAC-SHA512 (2023). */
+const PBKDF2_ITERATIONS = 210000;
+/** Bundles without an explicit `iter` predate the bump; decrypt at the old cost. */
+const LEGACY_PBKDF2_ITERATIONS = 100000;
 
 export interface TeleportBundle {
   /** Format version */
@@ -36,6 +39,8 @@ export interface TeleportBundle {
   createdAt: string;
   /** Number of secrets in the bundle */
   count: number;
+  /** PBKDF2 iteration count used for key derivation (absent = legacy 100k). */
+  iter?: number;
 }
 
 export interface TeleportPayload {
@@ -52,6 +57,7 @@ export const TeleportBundleSchema = z.object({
   tag: z.string(),
   createdAt: z.string(),
   count: z.number(),
+  iter: z.number().optional(),
 });
 
 export const TeleportPayloadSchema = z.object({
@@ -66,8 +72,12 @@ export const TeleportPayloadSchema = z.object({
   exportedBy: z.string().optional(),
 });
 
-function deriveKey(passphrase: string, salt: Buffer): Buffer {
-  return pbkdf2Sync(passphrase, salt, PBKDF2_ITERATIONS, KEY_LENGTH, "sha512");
+function deriveKey(
+  passphrase: string,
+  salt: Buffer,
+  iterations: number = PBKDF2_ITERATIONS,
+): Buffer {
+  return pbkdf2Sync(passphrase, salt, iterations, KEY_LENGTH, "sha512");
 }
 
 /**
@@ -85,7 +95,7 @@ export function teleportPack(
   const plaintext = JSON.stringify(payload);
   const salt = randomBytes(SALT_LENGTH);
   const iv = randomBytes(IV_LENGTH);
-  const key = deriveKey(passphrase, salt);
+  const key = deriveKey(passphrase, salt, PBKDF2_ITERATIONS);
 
   const cipher = createCipheriv(ALGORITHM, key, iv);
   const encrypted = Buffer.concat([
@@ -102,6 +112,7 @@ export function teleportPack(
     tag: tag.toString("base64"),
     createdAt: new Date().toISOString(),
     count: secrets.length,
+    iter: PBKDF2_ITERATIONS,
   };
 
   return Buffer.from(JSON.stringify(bundle)).toString("base64");
@@ -140,7 +151,7 @@ export function teleportUnpack(
   const iv = Buffer.from(bundle.iv, "base64");
   const tag = Buffer.from(bundle.tag, "base64");
   const encrypted = Buffer.from(bundle.data, "base64");
-  const key = deriveKey(passphrase, salt);
+  const key = deriveKey(passphrase, salt, bundle.iter ?? LEGACY_PBKDF2_ITERATIONS);
 
   const decipher = createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(tag);
