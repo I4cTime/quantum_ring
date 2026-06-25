@@ -55,7 +55,14 @@ jobs:
         run: pnpm run build
 
       - name: Publish to npm
-        run: npm publish --provenance --access public
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VER=$(node -p "require('./package.json').version")
+          if npm view "$NAME@$VER" version >/dev/null 2>&1; then
+            echo "npm already has $NAME@$VER — skipping (idempotent re-run)."
+          else
+            npm publish --provenance --access public
+          fi
 
       - name: Install mcp-publisher
         run: |
