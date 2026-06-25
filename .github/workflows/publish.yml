@@ -24,7 +24,7 @@ jobs:
         with:
           ref: ${{ inputs.ref || github.ref }}
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           # Node 24 bundles npm 11.5+, which is the minimum required for
           # OIDC trusted publishing on npmjs.com. Node 22 ships npm 10.x,
