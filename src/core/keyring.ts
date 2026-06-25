@@ -594,6 +594,24 @@ export function exportSecrets(
       const decay = checkDecay(entry.envelope);
       if (decay.isExpired) continue;
 
+      // Honor the approval gate on bulk reads too — otherwise export_secrets
+      // would surface approval-protected values to an MCP agent that getSecret
+      // would have denied. Silently skip (consistent with policy filtering).
+      if (
+        source === "mcp" &&
+        entry.envelope.meta.requiresApproval &&
+        !hasApproval(entry.key, entry.scope)
+      ) {
+        logAudit({
+          action: "read",
+          key: entry.key,
+          scope: entry.scope,
+          source,
+          detail: "blocked: requires user approval (export)",
+        });
+        continue;
+      }
+
       const value = collapseValue(entry.envelope, env);
       if (value !== null) {
         rawValues.set(entry.key, value);

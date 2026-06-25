@@ -182,7 +182,7 @@ qring tunnel list
 
 ### Teleportation — Encrypted Sharing
 
-Pack secrets into AES-256-GCM encrypted bundles for secure transfer between machines.
+Pack secrets into AES-256-GCM encrypted bundles for secure transfer between machines. Keys are derived with PBKDF2-HMAC-SHA512 (210 000 iterations) from your passphrase; each bundle records its iteration count, so bundles produced by older versions still unpack.
 
 ```bash
 # Pack secrets (prompts for passphrase)
@@ -197,7 +197,7 @@ qring teleport unpack <bundle> --dry-run
 
 ### Import — Bulk Secret Ingestion
 
-Import secrets from `.env` files directly into q-ring. Supports standard dotenv syntax including comments, quoted values, and escape sequences.
+Import secrets from `.env` files directly into q-ring. Supports standard dotenv syntax including comments, quoted values, and escape sequences. The CLI accepts either a file path or raw content; the `import_dotenv` MCP tool only accepts raw content (it never reads files from disk) so an agent can't coerce it into reading arbitrary local files.
 
 ```bash
 # Import all secrets from a .env file
@@ -335,7 +335,7 @@ qring hook test <id>
 
 Hooks are fire-and-forget: a failing hook never blocks secret operations. The hook registry is stored at `~/.config/q-ring/hooks.json`.
 
-**SSRF protection:** HTTP hook URLs targeting private/loopback IP ranges (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`, `::1`, `fc00::/7`) are blocked by default. DNS resolution is checked before the request is sent. To allow hooks targeting local services (e.g. during development), set the environment variable `Q_RING_ALLOW_PRIVATE_HOOKS=1`.
+**SSRF protection:** HTTP hook URLs targeting private/loopback IP ranges (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `169.254.0.0/16`, `::1`, `fc00::/7`) are blocked by default. DNS is checked up front *and* re-validated at connect time, so a hostname can't pass the check then rebind to a private address before the socket opens. To allow hooks targeting local services (e.g. during development), set the environment variable `Q_RING_ALLOW_PRIVATE_HOOKS=1`.
 
 ### Configurable Rotation
 
@@ -397,7 +397,7 @@ qring get DB_URL
 
 ### User Approvals (Zero-Trust Agent)
 
-Protect sensitive production secrets from being read autonomously by the MCP server without explicit user approval. Each approval token is HMAC-verified, scoped, reasoned, and time-limited.
+Protect sensitive production secrets from being read autonomously by the MCP server without explicit user approval. Each approval token is HMAC-verified, scoped, reasoned, and time-limited. The gate applies to bulk reads too — `export_secrets` and `teleport_pack` over MCP skip approval-protected keys that lack a valid grant.
 
 ```bash
 # Mark a secret as requiring approval
@@ -507,6 +507,8 @@ qring wizard myservice --hook-exec "pm2 restart app"
 ### Governance Policy
 
 Define project-level governance rules in `.q-ring.json` to control which MCP tools can be used, which keys are accessible, and which commands can be executed. Policy is enforced at both the MCP server and keyring level.
+
+Over MCP, policy is resolved from the directory the server was **launched** in — not from the `projectPath` a caller passes — so an agent can't sidestep restrictions by pointing at a directory with no policy. Launch the MCP server from your project root (where `.q-ring.json` lives). Edits to `.q-ring.json` are picked up automatically (the policy cache invalidates on file change), so you don't need to restart the server.
 
 ```bash
 # View the active policy
@@ -626,7 +628,7 @@ qring agent --once
 
 ### Quantum Status Dashboard — Live Monitoring
 
-Launch a real-time dashboard in your browser that turns the entire quantum subsystem into one glanceable page. The dashboard is a single self-contained HTML page served locally — no dependencies, no cloud, no config — and streams updates every 5 seconds via Server-Sent Events while preserving search input and scroll position across ticks.
+Launch a real-time dashboard in your browser that turns the entire quantum subsystem into one glanceable page. It's a single self-contained HTML page served locally — no cloud, no config, fully offline — built as a Preact + htm app (runtime bundled and inlined). It streams updates every 5 seconds via Server-Sent Events and diffs the DOM in place, so data refreshes without re-running entrance animations and your search input, caret, and scroll position are preserved across ticks.
 
 What you get:
 
@@ -644,14 +646,16 @@ What you get:
 
 Top-bar controls let you **pause** SSE updates (handy while reading the audit feed), **refresh** on demand, or jump to the raw JSON snapshot at `/api/status`. Keyboard shortcuts: `/` focus secrets search · `P` pause · `R` refresh.
 
+The dashboard binds to `127.0.0.1` only and **never** exposes secret values, but it does surface key names, the audit log, and approval grants — so every route is gated by a random, per-launch token. `qring status` prints (and opens) the full URL including `?token=…`; requests without the token get a `403`. Stop the server to invalidate the token.
+
 ```bash
-# Open the dashboard (auto-launches your browser)
+# Open the dashboard (auto-launches your browser at http://127.0.0.1:9876/?token=…)
 qring status
 
 # Specify a custom port
 qring status --port 4200
 
-# Don't auto-open the browser
+# Don't auto-open the browser (copy the printed tokenized URL yourself)
 qring status --no-open
 ```
 
@@ -668,8 +672,8 @@ q-ring includes a full MCP server with 44 tools for AI agent integration.
 | `set_secret` | Create or overwrite a single secret with optional TTL, per-env state, tags, rotation format |
 | `delete_secret` | Permanently remove a secret value (not undoable from q-ring) |
 | `has_secret` | Boolean existence check that respects decay (no audit read) |
-| `export_secrets` | Render multiple secrets as `.env` or JSON for one-off export |
-| `import_dotenv` | Parse `.env` text and bulk-store every key/value pair |
+| `export_secrets` | Render multiple secrets as `.env` or JSON for one-off export (skips approval-protected keys without a grant) |
+| `import_dotenv` | Parse `.env` text and bulk-store every key/value pair (accepts raw content only — never reads files) |
 | `check_project` | Compare `.q-ring.json` manifest against the keyring for missing/expired/stale keys |
 | `env_generate` | Render a complete `.env` body from the project manifest, with warnings for gaps |
 
@@ -741,7 +745,7 @@ q-ring includes a full MCP server with 44 tools for AI agent integration.
 | `verify_audit_chain` | Recompute the audit hash chain and report the first break point if tampered |
 | `export_audit` | Export audit events as jsonl, json, or csv for archival/SIEM |
 | `health_check` | Read-only scope sweep: decay/stale/expired counts plus current anomalies |
-| `status_dashboard` | Start a local SSE dashboard with live KPIs, secrets, hooks, and audit feed |
+| `status_dashboard` | Start a local SSE dashboard with live KPIs, secrets, hooks, and audit feed (returns a token-gated `127.0.0.1` URL) |
 | `agent_scan` | Multi-project health pass with optional `autoRotate` for expired secrets |
 
 ### Governance & Policy Tools

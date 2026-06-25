@@ -82,29 +82,37 @@ export function generateSecret(opts: NoiseOptions = {}): string {
 
     case "password": {
       const len = opts.length ?? 24;
-      let pw = randomString(PASSWORD_CHARS, len);
 
-      // Guarantee at least one of each class
-      const hasUpper = /[A-Z]/.test(pw);
-      const hasLower = /[a-z]/.test(pw);
-      const hasDigit = /[0-9]/.test(pw);
-      const hasSpecial = /[^A-Za-z0-9]/.test(pw);
+      // Construct from one guaranteed char per class, fill the rest, then
+      // shuffle. This guarantees every class is present (when len ≥ #classes)
+      // without any fixup pass that could clobber an already-placed class.
+      const classCharsets = [
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        "abcdefghijklmnopqrstuvwxyz",
+        "0123456789",
+        "!@#$%^&*()-_=+",
+      ];
+      const guaranteed = classCharsets
+        .slice(0, Math.min(classCharsets.length, len))
+        .map((cs) => randomString(cs, 1));
+      const remaining = Math.max(0, len - guaranteed.length);
+      const chars = [
+        ...guaranteed,
+        ...(remaining > 0 ? randomString(PASSWORD_CHARS, remaining).split("") : []),
+      ];
 
-      if (!hasUpper) pw = replaceAt(pw, randomInt(len), randomString("ABCDEFGHIJKLMNOPQRSTUVWXYZ", 1));
-      if (!hasLower) pw = replaceAt(pw, randomInt(len), randomString("abcdefghijklmnopqrstuvwxyz", 1));
-      if (!hasDigit) pw = replaceAt(pw, randomInt(len), randomString("0123456789", 1));
-      if (!hasSpecial) pw = replaceAt(pw, randomInt(len), randomString("!@#$%^&*()-_=+", 1));
+      // Fisher-Yates shuffle backed by the CSPRNG.
+      for (let i = chars.length - 1; i > 0; i--) {
+        const j = randomInt(i + 1);
+        [chars[i], chars[j]] = [chars[j], chars[i]];
+      }
 
-      return pw;
+      return chars.join("");
     }
 
     default:
       return randomBytes(32).toString("hex");
   }
-}
-
-function replaceAt(str: string, index: number, char: string): string {
-  return str.slice(0, index) + char + str.slice(index + 1);
 }
 
 /**
