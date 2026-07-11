@@ -64,6 +64,8 @@ approval gates.
 | `hook:install` / `hook:uninstall` / `hook:run`            | Git pre-commit wiring                                           |
 | `qring wizard`                                            | Interactive service setup                                       |
 | `hook enable` / `disable` / `test`                        | Runtime lifecycle for secret-change hooks                       |
+| `qring doctor`                                            | Install self-check (keyring, audit, manifest, MCP binary)       |
+| `qring completion <shell>`                                | bash/zsh/fish completion scripts generated from the CLI itself  |
 
 ## MCP-only (no CLI subcommand)
 
