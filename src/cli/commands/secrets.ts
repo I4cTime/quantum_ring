@@ -3,6 +3,7 @@ import {
   getSecret,
   setSecret,
   deleteSecret,
+  hasSecret,
   listSecrets,
   exportSecrets,
   getEnvelope,
@@ -141,6 +142,31 @@ export function registerSecretsCommands(program: Command): void {
       // process.stdout.write instead of console.log so static analysis
       // (CodeQL `js/clear-text-logging`) does not flag it as logging.
       process.stdout.write(JSON.stringify(payload) + "\n");
+    });
+
+  program
+    .command("has <key>")
+    .description(
+      "Check whether a secret exists (exit 0 if present, 1 if not) — decay-aware",
+    )
+    .option("-g, --global", "Look only in global scope")
+    .option("-p, --project", "Look only in project scope")
+    .option("--team <id>", "Look only in team scope")
+    .option("--org <id>", "Look only in org scope")
+    .option("--project-path <path>", "Explicit project path")
+    .option("-q, --quiet", "No output, exit code only (for scripts)")
+    .action((key: string, cmd) => {
+      const opts = buildOpts(cmd);
+      const exists = hasSecret(key, opts);
+
+      if (!cmd.quiet) {
+        if (wantsJsonOutput(program, cmd)) {
+          console.log(JSON.stringify({ ok: true, data: { key, exists } }));
+        } else {
+          console.log(exists ? "true" : "false");
+        }
+      }
+      if (!exists) process.exitCode = 1;
     });
 
   program

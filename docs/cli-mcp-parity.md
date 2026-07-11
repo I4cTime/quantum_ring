@@ -32,7 +32,7 @@ approval gates.
 | Concern            | CLI                                              | MCP                                                             |
 | ------------------ | ------------------------------------------------ | --------------------------------------------------------------- |
 | Secret CRUD        | `set` `get` `delete` `list` `inspect` `export` `import` | `set_secret` `get_secret` `delete_secret` `list_secrets` `inspect_secret` `export_secrets` `import_dotenv` |
-| Existence check    | `list` / `inspect`                               | `has_secret`                                                    |
+| Existence check    | `has` (exit 0/1, `--quiet` for scripts)          | `has_secret`                                                    |
 | Generation         | `generate`                                       | `generate_secret`                                               |
 | Entanglement       | `entangle` / `disentangle`                       | `entangle_secrets` / `disentangle_secrets`                      |
 | Tunnel             | `tunnel create/read/destroy/list`                | `tunnel_create` / `tunnel_read` / `tunnel_destroy` / `tunnel_list` |
@@ -69,7 +69,6 @@ approval gates.
 
 | MCP tool        | Notes                                                                            |
 | --------------- | -------------------------------------------------------------------------------- |
-| `has_secret`    | Existence check — CLI users can use `qring inspect` or `qring list --filter`.    |
 | `check_policy`  | Programmatic policy probe — CLI surfaces the same information via `qring policy`. |
 
 ## JSON output

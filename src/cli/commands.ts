@@ -28,6 +28,7 @@ const COMMAND_GROUPS: Array<{
     commands: [
       "set",
       "get",
+      "has",
       "delete",
       "list",
       "inspect",
