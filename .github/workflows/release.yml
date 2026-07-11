@@ -19,8 +19,13 @@ permissions:
   contents: write
   id-token: write
 
+# NOTE: this must NOT be the "publish" group — the called publish.yml declares
+# that group itself, and a reusable workflow's concurrency still applies when
+# called, so parent+child sharing a group is an instant deadlock-cancel
+# (bit us on the v0.13.0 tag). The child's group is what serializes actual
+# publishing; this one only keeps two release runs from racing each other.
 concurrency:
-  group: publish
+  group: release
   cancel-in-progress: false
 
 jobs:
