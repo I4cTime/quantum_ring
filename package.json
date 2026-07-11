@@ -63,10 +63,10 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.5",
+    "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.1",
     "esbuild": "^0.28.1",
-    "eslint": "^9.39.5",
+    "eslint": "^10.7.0",
     "htm": "^3.1.1",
     "preact": "^10.29.7",
     "prettier": "^3.9.5",
