@@ -34,6 +34,25 @@ describe("dashboard server auth + security headers", () => {
     expect(res.headers.get("content-type")).toContain("text/html");
   });
 
+  it("includes audit-chain integrity in the snapshot", async () => {
+    const res = await fetch(`${base}/api/status?token=${dash.token}`);
+    expect(res.status).toBe(200);
+    const snap = (await res.json()) as {
+      auditChain: { intact: boolean; totalEvents: number; validEvents: number };
+    };
+    expect(snap.auditChain).toBeDefined();
+    expect(typeof snap.auditChain.intact).toBe("boolean");
+    expect(snap.auditChain.totalEvents).toBeGreaterThanOrEqual(0);
+  });
+
+  it("serves the entanglement graph and chain badge styles", async () => {
+    const res = await fetch(`${base}/?token=${dash.token}`);
+    const html = await res.text();
+    expect(html).toContain(".entangle-graph");
+    expect(html).toContain(".chain-badge");
+    expect(html).toContain("chain intact"); // client bundle renders the badge
+  });
+
   it("sends security headers on every response", async () => {
     for (const url of [`${base}/`, `${base}/?token=${dash.token}`]) {
       const res = await fetch(url);

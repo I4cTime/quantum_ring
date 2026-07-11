@@ -11,7 +11,7 @@ import { listSecrets } from "./keyring.js";
 import { checkDecay, type DecayStatus, type QuantumEnvelope } from "./envelope.js";
 import { listEntanglements, type EntanglementPair } from "./entanglement.js";
 import { tunnelList } from "./tunnel.js";
-import { queryAudit, detectAnomalies, type AuditEvent, type AccessAnomaly, type AuditAction } from "./observer.js";
+import { queryAudit, detectAnomalies, verifyAuditChain, type AuditEvent, type AccessAnomaly, type AuditAction } from "./observer.js";
 import { collapseEnvironment, readProjectConfig, type CollapseResult } from "./collapse.js";
 import { listHooks, type HookEntry, type HookType } from "./hooks.js";
 import { listApprovals } from "./approval.js";
@@ -167,6 +167,13 @@ export interface DashboardSnapshot {
   hooks: HookSnapshot[];
   /** Agent memory key count */
   memoryKeys: number;
+  /** Audit hash-chain integrity (same data as `qring audit:verify`) */
+  auditChain: {
+    intact: boolean;
+    totalEvents: number;
+    validEvents: number;
+    brokenAt?: number;
+  };
 }
 
 const AUDIT_WINDOW_SECONDS = 24 * 60 * 60; // 24h
@@ -379,6 +386,15 @@ export function collectSnapshot(): DashboardSnapshot {
     approvals,
     hooks: hookEntries,
     memoryKeys: listMemory().length,
+    auditChain: (() => {
+      const chain = verifyAuditChain();
+      return {
+        intact: chain.intact,
+        totalEvents: chain.totalEvents,
+        validEvents: chain.validEvents,
+        ...(chain.brokenAt != null ? { brokenAt: chain.brokenAt } : {}),
+      };
+    })(),
   };
 }
 

@@ -344,13 +344,52 @@ function EntanglementCard({ snap, delay }) {
     seen.add(id);
     return true;
   });
+
+  // Node/edge graph on a circular layout. Nodes are unique keys; an edge per
+  // entangled pair. Falls back to the flat list when the graph gets crowded.
+  const nodeNames = [];
+  const nodeIndex = new Map();
+  for (const p of unique) {
+    for (const k of [p.source.key, p.target.key]) {
+      if (!nodeIndex.has(k)) {
+        nodeIndex.set(k, nodeNames.length);
+        nodeNames.push(k);
+      }
+    }
+  }
+  const useGraph = unique.length > 0 && nodeNames.length <= 14;
+
+  const W = 320, H = 210, cx = W / 2, cy = H / 2;
+  const r = Math.min(W, H) / 2 - 34;
+  const pos = nodeNames.map((_, i) => {
+    const a = (2 * Math.PI * i) / nodeNames.length - Math.PI / 2;
+    return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+  });
+  const trunc = (s) => (s.length > 14 ? s.slice(0, 12) + "…" : s);
+
   return html`<${Card} delay=${delay}>
-    <${CardTitle} icon=${icons.entangle} title="Entanglement" aside=${unique.length + " pair" + (unique.length === 1 ? "" : "s")} />
+    <${CardTitle} icon=${icons.entangle} title="Entanglement" aside=${unique.length + " pair" + (unique.length === 1 ? "" : "s") + " · " + nodeNames.length + " keys"} />
     ${!unique.length
       ? html`<${Empty} cta="$ qring entangle KEY_A KEY_B">No entangled secrets.<//>`
-      : html`<div class="entangle-list">${unique.slice(0, 12).map((p, i) => html`<div class="entangle-pair" key=${i}>
-          <span>${p.source.key}</span><span class="entangle-arrow">↔</span><span>${p.target.key}</span>
-        </div>`)}</div>`}
+      : useGraph
+        ? html`<svg class="entangle-graph" viewBox="0 0 ${W} ${H}" role="img" aria-label="Entanglement graph: ${unique.length} linked pairs">
+            ${unique.map((p, i) => {
+              const a = pos[nodeIndex.get(p.source.key)];
+              const b = pos[nodeIndex.get(p.target.key)];
+              return html`<line key=${"e" + i} x1=${a.x} y1=${a.y} x2=${b.x} y2=${b.y} class="entangle-edge" />`;
+            })}
+            ${nodeNames.map((name, i) => {
+              const p = pos[i];
+              const rightHalf = p.x >= cx;
+              return html`<g key=${"n" + i}>
+                <circle cx=${p.x} cy=${p.y} r="5" class="entangle-node" />
+                <text x=${p.x + (rightHalf ? 9 : -9)} y=${p.y + 3.5} text-anchor=${rightHalf ? "start" : "end"} class="entangle-label">${trunc(name)}<title>${name}</title></text>
+              </g>`;
+            })}
+          </svg>`
+        : html`<div class="entangle-list">${unique.slice(0, 12).map((p, i) => html`<div class="entangle-pair" key=${i}>
+            <span>${p.source.key}</span><span class="entangle-arrow">↔</span><span>${p.target.key}</span>
+          </div>`)}</div>`}
   <//>`;
 }
 
@@ -542,8 +581,16 @@ function AuditCard({ snap, delay, filter, setFilter }) {
   const allActions = ["read", "write", "delete", "rotate", "generate", "entangle", "tunnel", "teleport", "approve", "revoke", "policy_deny", "collapse", "export"];
   const allSources = ["cli", "mcp", "agent", "ci", "hook", "api"];
   const toggle = (field, val) => setFilter({ ...filter, [field]: filter[field] === val ? "" : val });
+  const chain = snap.auditChain;
   return html`<${Card} delay=${delay} wide=${true}>
     <${CardTitle} icon=${icons.audit} title="Audit Log (24h)" aside=${filtered.length + " of " + events.length + " shown · window " + (m.windowSeconds || 86400) / 3600 + "h"} />
+    ${chain && chain.totalEvents > 0
+      ? html`<div class="chain-badge ${chain.intact ? "ok" : "broken"}" title="Hash-chain integrity — same check as qring audit:verify">
+          ${chain.intact
+            ? html`⛓ chain intact · ${chain.totalEvents} events verified`
+            : html`⛓ chain BROKEN at event #${chain.brokenAt} · ${chain.validEvents}/${chain.totalEvents} valid — run $ qring audit:verify`}
+        </div>`
+      : null}
     <div class="audit-actions-strip">
       ${allActions.filter((a) => m.byAction[a]).length
         ? allActions.filter((a) => m.byAction[a]).map((a) => html`<span class="audit-chip ${filter.action === a ? "active" : ""}" key=${a} onClick=${() => toggle("action", a)}>${a}<strong>${m.byAction[a]}</strong></span>`)
