@@ -35,7 +35,7 @@ Loaded into every Claude Code conversation in this project. Provides the always-
 
 Project-scoped MCP config that connects Claude Code to the local `qring-mcp` binary over stdio. All 44 q-ring MCP tools become available in chat.
 
-### Subagents (`.claude/agents/*.md`)
+### Subagents (`agents/*.md`)
 
 | Subagent | Purpose |
 |----------|---------|
@@ -44,7 +44,7 @@ Project-scoped MCP config that connects Claude Code to the local `qring-mcp` bin
 
 Invoke explicitly with `> Use the secret-ops subagent to store my OpenAI key` or let Claude Code delegate automatically based on the description.
 
-### Slash commands (`.claude/commands/*.md`)
+### Slash commands (`commands/*.md`)
 
 | Command | Action |
 |---------|--------|
@@ -57,7 +57,7 @@ Invoke explicitly with `> Use the secret-ops subagent to store my OpenAI key` or
 | `/qring-exec-safe` | Run a command with secrets injected and stdout/stderr redacted |
 | `/qring-analyze` | Usage analytics and optimization suggestions |
 
-### Skills (`.claude/skills/*/SKILL.md`)
+### Skills (`skills/*/SKILL.md`)
 
 | Skill | Triggers On |
 |-------|-------------|
@@ -69,7 +69,7 @@ Invoke explicitly with `> Use the secret-ops subagent to store my OpenAI key` or
 
 Skills are progressively disclosed — Claude Code reads only the metadata until a skill is relevant, then loads the full body.
 
-### Hooks (`.claude/settings.json`)
+### Hooks (`hooks/hooks.json`, or `.claude/settings.json` for project installs)
 
 | Event | Behavior |
 |-------|----------|
@@ -77,11 +77,22 @@ Skills are progressively disclosed — Claude Code reads only the metadata until
 | `PreToolUse` (`Bash`) | Block commands that look like they would commit / print `.env` files; warn about secret leakage |
 | `SessionStart` | Print a one-line reminder to call `get_project_context` if a `.q-ring.json` is detected |
 
-> Hook scripts live in `hooks/scripts/`. They are pure Bash with no runtime dependencies — safe to read before installing.
+> Hook scripts live in `hooks/scripts/`. They are pure Bash with no runtime dependencies — safe to read before installing. Plugin installs wire them via `hooks/hooks.json` (`${CLAUDE_PLUGIN_ROOT}` paths); the project-scoped sync wires them via `.claude/settings.json` instead.
 
 ## Installation
 
-### One-shot sync (recommended)
+### Plugin install (recommended)
+
+Install through Claude Code's plugin system — no file copying, updates ship with the marketplace:
+
+```
+/plugin marketplace add I4cTime/quantum_ring
+/plugin install qring@q-ring
+```
+
+This registers the MCP server, slash commands, subagents, skills, and hooks in one step. You still need the `@i4ctime/q-ring` package installed globally (see Prerequisites) so `qring-mcp` is on `PATH`.
+
+### One-shot project sync
 
 From the `quantum_ring` repo root:
 
@@ -94,7 +105,8 @@ This copies into your project (`$PWD` by default):
 
 - `claude-code-plugin/CLAUDE.md` → `./CLAUDE.md`
 - `claude-code-plugin/.mcp.json` → `./.mcp.json`
-- `claude-code-plugin/.claude/` → `./.claude/`
+- `claude-code-plugin/agents|commands|skills|hooks/` → `./.claude/…`
+- `claude-code-plugin/.claude/settings.json` → `./.claude/settings.json`
 
 Pass a custom destination as the first argument:
 
@@ -108,9 +120,9 @@ To install the agents, commands, skills, and hooks for **all** projects (instead
 
 ```bash
 mkdir -p ~/.claude
-cp -r claude-code-plugin/.claude/agents     ~/.claude/agents
-cp -r claude-code-plugin/.claude/commands   ~/.claude/commands
-cp -r claude-code-plugin/.claude/skills     ~/.claude/skills
+cp -r claude-code-plugin/agents     ~/.claude/agents
+cp -r claude-code-plugin/commands   ~/.claude/commands
+cp -r claude-code-plugin/skills     ~/.claude/skills
 cp    claude-code-plugin/.claude/settings.json ~/.claude/settings.json
 ```
 
@@ -125,7 +137,12 @@ claude mcp add q-ring -- qring-mcp
 ### Manual project install
 
 ```bash
-cp -r claude-code-plugin/.claude    .
+pnpm run plugin:sync:claude   # preferred — handles the layout mapping for you
+# or by hand:
+mkdir -p .claude
+cp -r claude-code-plugin/agents claude-code-plugin/commands claude-code-plugin/skills claude-code-plugin/hooks .claude/
+rm -f .claude/hooks/hooks.json   # plugin-only manifest; project installs use settings.json
+cp    claude-code-plugin/.claude/settings.json .claude/settings.json
 cp    claude-code-plugin/CLAUDE.md  CLAUDE.md
 cp    claude-code-plugin/.mcp.json  .mcp.json
 ```
