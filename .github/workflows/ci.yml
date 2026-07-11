@@ -31,9 +31,6 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Security audit
-        run: pnpm audit --audit-level=high
-
       - name: Typecheck
         run: pnpm run typecheck
 
@@ -45,3 +42,45 @@ jobs:
 
       - name: Test
         run: pnpm run test:ci
+
+      # Exercise the actual published entry points so a broken shebang,
+      # bundling regression, or bad bin mapping fails CI instead of a release.
+      - name: Smoke test built CLI
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          OUT=$(node dist/index.js --version)
+          if [ "$OUT" != "$VER" ]; then
+            echo "::error::qring --version printed '$OUT', expected '$VER'"
+            exit 1
+          fi
+          node dist/index.js --help > /dev/null
+
+      - name: Smoke test MCP server (initialize handshake)
+        run: |
+          REQ='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci-smoke","version":"0.0.0"}}}'
+          RESP=$( (printf '%s\n' "$REQ" | timeout 15 node dist/mcp.js | head -n 1) || true )
+          if ! printf '%s' "$RESP" | grep -q '"serverInfo"'; then
+            echo "::error::qring-mcp did not answer the initialize request"
+            printf 'got: %s\n' "$RESP"
+            exit 1
+          fi
+
+  # Advisory-only: a freshly disclosed CVE in a transitive dep should not
+  # block unrelated PRs. Dependabot handles the actual upgrades.
+  audit:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Security audit (non-blocking)
+        run: pnpm audit --audit-level=high
