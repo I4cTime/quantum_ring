@@ -386,6 +386,20 @@ export interface DashboardServerOptions {
   port?: number;
 }
 
+// Enforced on every response. The page is fully self-contained (inline
+// CSS/JS, no external fetches), so the CSP can deny everything except inline
+// code and same-origin SSE. `no-referrer` keeps the ?token= URL out of any
+// outbound Referer header; `no-store` keeps the token-bearing HTML out of
+// shared caches.
+const SECURITY_HEADERS: Record<string, string> = {
+  "Content-Security-Policy":
+    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
+  "X-Frame-Options": "DENY",
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "no-referrer",
+  "Cache-Control": "no-store",
+};
+
 function timingSafeStringEqual(a: string, b: string): boolean {
   const ab = Buffer.from(a, "utf8");
   const bb = Buffer.from(b, "utf8");
@@ -435,20 +449,21 @@ export function startDashboardServer(
       pathname = parsed.pathname;
       query = parsed.searchParams;
     } catch {
-      res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+      res.writeHead(400, { ...SECURITY_HEADERS, "Content-Type": "text/plain; charset=utf-8" });
       res.end("Bad Request: invalid URL");
       return;
     }
 
     const provided = query.get("token") ?? "";
     if (!timingSafeStringEqual(provided, token)) {
-      res.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
+      res.writeHead(403, { ...SECURITY_HEADERS, "Content-Type": "text/plain; charset=utf-8" });
       res.end("Forbidden: missing or invalid token");
       return;
     }
 
     if (pathname === "/events") {
       res.writeHead(200, {
+        ...SECURITY_HEADERS,
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
@@ -465,13 +480,14 @@ export function startDashboardServer(
     if (pathname === "/api/status") {
       const snapshot = collectSnapshot();
       res.writeHead(200, {
+        ...SECURITY_HEADERS,
         "Content-Type": "application/json",
       });
       res.end(JSON.stringify(snapshot, null, 2));
       return;
     }
 
-    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.writeHead(200, { ...SECURITY_HEADERS, "Content-Type": "text/html; charset=utf-8" });
     res.end(html);
   });
 
