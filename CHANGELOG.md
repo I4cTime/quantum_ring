@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **`qring has <key>`** — script-friendly existence check (exit 0 if present, 1 if not; `--quiet` for exit-code-only, honors `--json`). Decay-aware like the MCP `has_secret` tool, closing the last MCP→CLI parity gap.
+- **Claude Code plugin is now a real installable plugin** — added `claude-code-plugin/.claude-plugin/plugin.json` and a repo-root `.claude-plugin/marketplace.json`, so it installs via `/plugin marketplace add I4cTime/quantum_ring` + `/plugin install qring@q-ring` instead of file copying. Plugin components (agents/commands/skills/hooks) moved from `claude-code-plugin/.claude/` to the plugin root to match the Claude Code plugin format; hooks are wired via `hooks/hooks.json` (`${CLAUDE_PLUGIN_ROOT}`) for plugin installs and `.claude/settings.json` for project-scoped sync installs. `sync-versions` now stamps both new manifests.
+- **`CONTRIBUTING.md`** — dev environment, branch/commit conventions, and the list of files to keep in sync (parity doc, plugin manifests, dashboard client bundle).
+- **Docker install instructions** in the README for the MCP-server container path.
+- **CI smoke tests** — the built `qring` binary (`--version`, `--help`) and an MCP `initialize` handshake against `dist/mcp.js` now run in CI after the build.
+
+### Changed
+- **CLI errors are now one-line messages instead of stack traces** — a central handler catches errors thrown by any command (policy denials, keyring backend failures) and prints them in red; set `QRING_DEBUG=1` for the full stack.
+- **`pnpm audit` moved off the blocking CI path** — it runs as a separate non-blocking job, so a freshly disclosed advisory in a transitive dependency no longer fails unrelated PRs.
+- **npm publish now triggers on `release: published`** (was `created`), so draft releases can no longer publish; `mcp-publisher` is pinned to v1.7.9 instead of `latest`; publish and Homebrew workflows gained concurrency guards.
+
+### Fixed
+- **`qring set <key>` no longer hangs when the value is piped** — `promptSecret` reads stdin to EOF when it isn't a TTY (e.g. `echo "$VALUE" | qring set KEY`).
+- **Homebrew formula test** asserted the string `"qring"` in `qring --version` output, which prints only the bare version — `brew test` would have failed on every release. It now asserts the version string.
+- **Status dashboard actually sends security headers** — `Content-Security-Policy` (default-deny, inline-only), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` (keeps the `?token=` URL out of Referer headers), and `Cache-Control: no-store` on every response. Previously the page was CSP-*compatible* but no policy was enforced. Added tests for token auth (403) and the new headers.
+
 ## [0.12.0] — 2026-06-24
 
 ### Security
