@@ -5,7 +5,7 @@ description: Manage secrets stored in q-ring — store, retrieve, list, inspect,
 
 # Secret Management
 
-## When to use
+## When to Use
 
 Activate when the user:
 - Asks to store, retrieve, delete, or list secrets
@@ -54,9 +54,9 @@ Link secrets so rotating one updates the other:
 
 ### 6. Scopes
 
-Secrets resolve through a cascade: project → team → org → global. Use the `scope` parameter to target a specific level.
+Secrets resolve through a cascade: project -> team -> org -> global. Use the `scope` parameter to target a specific level.
 
-## Best practices
+## Best Practices
 
 - Always add a `description` when storing secrets for discoverability
 - Use `tags` to group related secrets (e.g., `database`, `api`, `auth`)

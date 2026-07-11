@@ -14,7 +14,7 @@ body:
     attributes:
       label: q-ring version
       description: "Run `qring --version` to find this."
-      placeholder: "0.2.9"
+      placeholder: "0.12.0"
     validations:
       required: true
 

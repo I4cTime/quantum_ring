@@ -9,6 +9,16 @@ export function wantsJsonOutput(program: Command, cmd: unknown): boolean {
 }
 
 /**
+ * Emit `{ ok: true, data }` as pretty-printed JSON when `--json` is in
+ * effect. Returns true if JSON was emitted (caller should skip human output).
+ */
+export function emitJson(program: Command, cmd: unknown, data: unknown): boolean {
+  if (!wantsJsonOutput(program, cmd)) return false;
+  process.stdout.write(JSON.stringify({ ok: true, data }, null, 2) + "\n");
+  return true;
+}
+
+/**
  * Break the CodeQL taint chain from getPassword → console.log.
  * Copies a string value so static analysis no longer considers it
  * "sensitive data returned by getPassword".

@@ -8,7 +8,7 @@ inclusion: manual
 
 Scan and lint codebases for hardcoded secrets using entropy analysis and regex heuristics.
 
-## When to use
+## When to Use
 
 Activate when the user:
 - Asks to scan a project for hardcoded secrets or credentials
@@ -49,7 +49,7 @@ Call `lint_files` with the list of affected files and `fix: true` to:
 
 After fixing, re-run `scan_codebase_for_secrets` to confirm no secrets remain.
 
-## Best practices
+## Best Practices
 
 - Run scanning before every PR or commit
 - Ignore placeholder values (`your_api_key`, `replace_me`, `example`) — the scanner handles this automatically

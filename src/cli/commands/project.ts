@@ -3,6 +3,7 @@ import {
   getSecret,
   setSecret,
   getEnvelope,
+  hasSecret,
 } from "../../core/keyring.js";
 import { collapseEnvironment, readProjectConfig } from "../../core/collapse.js";
 import { checkDecay } from "../../core/envelope.js";
@@ -11,7 +12,8 @@ import { getProjectContext } from "../../core/context.js";
 import { registerHook, type HookType, type HookAction } from "../../core/hooks.js";
 import { writeFileSync, readFileSync, existsSync } from "node:fs";
 import { c, scopeColor, envBadge, SYMBOLS } from "../../utils/colors.js";
-import { wantsJsonOutput } from "../helpers.js";
+import { wantsJsonOutput, emitJson } from "../helpers.js";
+import { confirm } from "../../utils/prompt.js";
 import { buildOpts } from "../options.js";
 
 export function registerProjectCommands(program: Command): void {
@@ -102,6 +104,7 @@ export function registerProjectCommands(program: Command): void {
     .command("check")
     .description("Validate project secrets against .q-ring.json manifest")
     .option("--project-path <path>", "Project path (defaults to cwd)")
+    .option("--json", "Output as JSON")
     .action((cmd) => {
       const projectPath = cmd.projectPath ?? process.cwd();
       const config = readProjectConfig(projectPath);
@@ -118,53 +121,74 @@ export function registerProjectCommands(program: Command): void {
         process.exit(1);
       }
 
-      console.log(
-        c.bold(`\n  ${SYMBOLS.shield} Project secret manifest check\n`),
-      );
-
-      let present = 0;
-      let missing = 0;
-      let expiredCount = 0;
-      let staleCount = 0;
+      type KeyStatus = "ok" | "missing" | "optional-not-set" | "expired" | "stale";
+      const statuses: Array<{
+        key: string;
+        status: KeyStatus;
+        description?: string;
+        lifetimePercent?: number;
+      }> = [];
 
       for (const [key, manifest] of Object.entries(config.secrets)) {
         const result = getEnvelope(key, { projectPath, source: "cli" });
 
         if (!result) {
-          if (manifest.required !== false) {
-            missing++;
-            console.log(
-              `  ${c.red(SYMBOLS.cross)} ${c.bold(key)} ${c.red("MISSING")} ${manifest.description ? c.dim(`— ${manifest.description}`) : ""}`,
-            );
-          } else {
-            console.log(
-              `  ${c.dim(SYMBOLS.cross)} ${c.bold(key)} ${c.dim("optional, not set")} ${manifest.description ? c.dim(`— ${manifest.description}`) : ""}`,
-            );
-          }
+          statuses.push({
+            key,
+            status: manifest.required !== false ? "missing" : "optional-not-set",
+            description: manifest.description,
+          });
           continue;
         }
 
         const decay = checkDecay(result.envelope);
+        statuses.push({
+          key,
+          status: decay.isExpired ? "expired" : decay.isStale ? "stale" : "ok",
+          description: manifest.description,
+          ...(decay.isStale && !decay.isExpired
+            ? { lifetimePercent: decay.lifetimePercent }
+            : {}),
+        });
+      }
 
-        if (decay.isExpired) {
-          expiredCount++;
-          console.log(
-            `  ${c.red(SYMBOLS.warning)} ${c.bold(key)} ${c.bgRed(c.white(" EXPIRED "))} ${manifest.description ? c.dim(`— ${manifest.description}`) : ""}`,
-          );
-        } else if (decay.isStale) {
-          staleCount++;
-          console.log(
-            `  ${c.yellow(SYMBOLS.warning)} ${c.bold(key)} ${c.yellow(`stale (${decay.lifetimePercent}%)`)} ${manifest.description ? c.dim(`— ${manifest.description}`) : ""}`,
-          );
+      const present = statuses.filter((s) => s.status === "ok").length;
+      const missing = statuses.filter((s) => s.status === "missing").length;
+      const expiredCount = statuses.filter((s) => s.status === "expired").length;
+      const staleCount = statuses.filter((s) => s.status === "stale").length;
+      const total = Object.keys(config.secrets).length;
+
+      if (
+        emitJson(program, cmd, {
+          projectPath,
+          secrets: statuses,
+          summary: { total, present, missing, expired: expiredCount, stale: staleCount },
+          ready: missing === 0,
+        })
+      ) {
+        if (missing > 0) process.exitCode = 1;
+        return;
+      }
+
+      console.log(
+        c.bold(`\n  ${SYMBOLS.shield} Project secret manifest check\n`),
+      );
+
+      for (const s of statuses) {
+        const desc = s.description ? c.dim(`— ${s.description}`) : "";
+        if (s.status === "missing") {
+          console.log(`  ${c.red(SYMBOLS.cross)} ${c.bold(s.key)} ${c.red("MISSING")} ${desc}`);
+        } else if (s.status === "optional-not-set") {
+          console.log(`  ${c.dim(SYMBOLS.cross)} ${c.bold(s.key)} ${c.dim("optional, not set")} ${desc}`);
+        } else if (s.status === "expired") {
+          console.log(`  ${c.red(SYMBOLS.warning)} ${c.bold(s.key)} ${c.bgRed(c.white(" EXPIRED "))} ${desc}`);
+        } else if (s.status === "stale") {
+          console.log(`  ${c.yellow(SYMBOLS.warning)} ${c.bold(s.key)} ${c.yellow(`stale (${s.lifetimePercent}%)`)} ${desc}`);
         } else {
-          present++;
-          console.log(
-            `  ${c.green(SYMBOLS.check)} ${c.bold(key)} ${c.green("OK")} ${manifest.description ? c.dim(`— ${manifest.description}`) : ""}`,
-          );
+          console.log(`  ${c.green(SYMBOLS.check)} ${c.bold(s.key)} ${c.green("OK")} ${desc}`);
         }
       }
 
-      const total = Object.keys(config.secrets).length;
       console.log(
         `\n  ${c.bold(`${total} declared`)}  ${c.green(`${present} present`)}  ${c.yellow(`${staleCount} stale`)}  ${c.red(`${expiredCount} expired`)}  ${c.red(`${missing} missing`)}`,
       );
@@ -192,10 +216,13 @@ export function registerProjectCommands(program: Command): void {
     .command("env")
     .description("Show detected environment (wavefunction collapse context)")
     .option("--project-path <path>", "Project path for detection")
+    .option("--json", "Output as JSON")
     .action((cmd) => {
       const result = collapseEnvironment({
         projectPath: cmd.projectPath ?? process.cwd(),
       });
+
+      if (emitJson(program, cmd, { environment: result })) return;
 
       if (result) {
         console.log(
@@ -218,9 +245,20 @@ export function registerProjectCommands(program: Command): void {
     .option("--project-path <path>", "Project path (defaults to cwd)")
     .option("-o, --output <file>", "Output file path (defaults to stdout)")
     .option("-e, --env <env>", "Force environment for superposition collapse")
-    .action((cmd) => {
+    .option("-y, --yes", "Overwrite an existing output file without asking")
+    .action(async (cmd) => {
       const projectPath = cmd.projectPath ?? process.cwd();
       const config = readProjectConfig(projectPath);
+
+      if (
+        cmd.output &&
+        existsSync(cmd.output) &&
+        !(await confirm(`Overwrite existing ${cmd.output}?`, { assumeYes: cmd.yes }))
+      ) {
+        console.error(c.dim("Aborted."));
+        process.exitCode = 1;
+        return;
+      }
 
       if (!config?.secrets || Object.keys(config.secrets).length === 0) {
         console.error(
@@ -304,6 +342,7 @@ export function registerProjectCommands(program: Command): void {
     .option("-g, --global", "Global scope")
     .option("-p, --project", "Project scope")
     .option("--project-path <path>", "Explicit project path")
+    .option("-y, --yes", "Skip confirmation when overwriting existing secrets")
     .action(async (name: string, cmd) => {
       const opts = buildOpts(cmd);
       const prefix = name.toUpperCase().replace(/[^A-Z0-9]/g, "_");
@@ -317,6 +356,21 @@ export function registerProjectCommands(program: Command): void {
         keyNames = cmd.keys.split(",").map((k: string) => k.trim());
       } else {
         keyNames = [`${prefix}_API_KEY`, `${prefix}_API_SECRET`];
+      }
+
+      // The wizard generates fresh random values — overwriting an existing
+      // secret replaces a real credential with a placeholder. Ask first.
+      const existing = keyNames.filter((k) => hasSecret(k, opts));
+      if (
+        existing.length > 0 &&
+        !(await confirm(
+          `${existing.length} secret(s) already exist and will be overwritten with generated values: ${existing.join(", ")}. Continue?`,
+          { assumeYes: cmd.yes },
+        ))
+      ) {
+        console.error(c.dim("Aborted."));
+        process.exitCode = 1;
+        return;
       }
 
       console.log(`\n${SYMBOLS.zap} ${c.bold(`Setting up service: ${name}`)}\n`);

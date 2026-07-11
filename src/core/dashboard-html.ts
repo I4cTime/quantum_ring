@@ -173,6 +173,15 @@ body{min-height:100vh;overflow-x:hidden;position:relative}
 .entangle-list{display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto}
 .entangle-pair{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:.83rem}
 .entangle-arrow{color:var(--accent-bright)}
+.entangle-graph{display:block;width:100%;height:auto;max-height:260px}
+.entangle-edge{stroke:var(--accent);stroke-opacity:.45;stroke-width:1.2}
+.entangle-node{fill:var(--accent-bright);stroke:var(--accent-glow);stroke-width:3;paint-order:stroke}
+.entangle-label{fill:var(--text-secondary);font-family:var(--font-mono);font-size:9px}
+
+/* Audit chain badge */
+.chain-badge{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:.78rem;padding:4px 10px;border-radius:999px;margin-bottom:10px}
+.chain-badge.ok{color:var(--green);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25)}
+.chain-badge.broken{color:var(--danger);background:rgba(255,94,91,.12);border:1px solid rgba(255,94,91,.3)}
 
 /* Tunnels */
 .tunnel-list{display:flex;flex-direction:column;gap:8px;max-height:240px;overflow-y:auto}
