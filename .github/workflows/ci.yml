@@ -65,6 +65,78 @@ jobs:
             exit 1
           fi
 
+  # Plugins must stay in lockstep: same commands/agents/skills across
+  # Cursor/Claude/Kiro, doc'd tool counts matching the code, versions stamped,
+  # and generated artifacts (skills, dashboard bundle) freshly regenerated.
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Plugin parity + generated skills up to date
+        run: pnpm run check:parity
+
+      - name: Dashboard client bundle is fresh
+        run: |
+          pnpm run build:dashboard
+          git diff --exit-code src/core/dashboard-client.ts
+
+  # Cross-platform / node-range coverage. The keyring backend differs per OS
+  # (Secret Service / macOS Keychain / Windows Credential Manager), and
+  # engines declares >=18 while the primary job only exercises ubuntu+22.
+  # Experimental (continue-on-error) until proven green; then make blocking.
+  compat:
+    name: compat (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # engines floor — build + smoke only (vitest 4 requires Node 20+)
+          - { os: ubuntu-latest, node: 18, tests: false }
+          - { os: ubuntu-latest, node: 24, tests: true }
+          - { os: macos-latest, node: 22, tests: true }
+          - { os: windows-latest, node: 22, tests: true }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Test
+        if: matrix.tests
+        run: pnpm run test:ci
+
+      - name: Smoke test built CLI
+        shell: bash
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          OUT=$(node dist/index.js --version)
+          if [ "$OUT" != "$VER" ]; then
+            echo "::error::qring --version printed '$OUT', expected '$VER'"
+            exit 1
+          fi
+          node dist/index.js --help > /dev/null
+
   # Advisory-only: a freshly disclosed CVE in a transitive dep should not
   # block unrelated PRs. Dependabot handles the actual upgrades.
   audit:
