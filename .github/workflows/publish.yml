@@ -45,7 +45,7 @@ jobs:
       # Must run before setup-node so `cache: pnpm` can find the pnpm binary.
       - uses: pnpm/action-setup@v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           # Node 24 bundles npm 11.5+, which is the minimum required for
           # OIDC trusted publishing on npmjs.com. Node 22 ships npm 10.x,
