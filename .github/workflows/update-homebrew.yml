@@ -3,6 +3,9 @@ name: Update Homebrew Tap
 on:
   release:
     types: [published]
+  # Called from release.yml on tag push (GITHUB_TOKEN-created releases don't
+  # emit events). GITHUB_REF_NAME is the tag in both paths.
+  workflow_call:
 
 permissions:
   contents: read

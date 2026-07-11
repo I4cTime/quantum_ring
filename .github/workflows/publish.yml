@@ -13,6 +13,14 @@ on:
         description: "Git ref to publish (defaults to the current branch)"
         required: false
         type: string
+  # Called from release.yml on tag push (GITHUB_TOKEN-created releases don't
+  # emit events, so the release:published trigger can't fire for that path).
+  workflow_call:
+    inputs:
+      ref:
+        description: "Git ref to publish (defaults to the calling ref)"
+        required: false
+        type: string
 
 permissions:
   contents: read

@@ -1,0 +1,71 @@
+name: Release
+
+# Pushing a v* tag drives the whole release: create the GitHub Release with
+# notes from the matching CHANGELOG section, then chain the npm/MCP publish
+# and the Homebrew tap update via workflow_call.
+#
+# Why the explicit chaining: releases created here use GITHUB_TOKEN, and
+# GITHUB_TOKEN-created events do not trigger other workflows, so the
+# release:published triggers on publish.yml / update-homebrew.yml would never
+# fire for tag-driven releases. Those event triggers still work for releases
+# created manually in the UI; every downstream step is idempotent, so the
+# occasional double-run is harmless.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  github-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract release notes from CHANGELOG
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Section between "## [x.y.z]" and the next "## [" heading.
+          awk -v ver="$VERSION" '
+            $0 ~ "^## \\[" ver "\\]" { grab = 1; next }
+            grab && /^## \[/ { exit }
+            grab { print }
+          ' CHANGELOG.md > /tmp/notes.md
+          if ! [ -s /tmp/notes.md ]; then
+            echo "::error::CHANGELOG.md has no [$VERSION] section — run scripts/prepare-release.mjs before tagging"
+            exit 1
+          fi
+
+      - name: Create GitHub release (idempotent)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists — skipping creation."
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$GITHUB_REF_NAME" \
+              --notes-file /tmp/notes.md
+          fi
+
+  publish:
+    needs: github-release
+    uses: ./.github/workflows/publish.yml
+    permissions:
+      contents: read
+      id-token: write
+
+  homebrew:
+    needs: publish
+    uses: ./.github/workflows/update-homebrew.yml
+    secrets: inherit
+    permissions:
+      contents: read
