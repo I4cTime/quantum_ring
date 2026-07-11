@@ -43,7 +43,7 @@ jobs:
       # pnpm version comes from the "packageManager" field in package.json;
       # do not also pin "version" here (pnpm/action-setup errors on conflict).
       # Must run before setup-node so `cache: pnpm` can find the pnpm binary.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
       - uses: actions/setup-node@v4
         with:
