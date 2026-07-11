@@ -1,0 +1,82 @@
+# Troubleshooting
+
+Start with the built-in self-check — it covers the most common failures in one shot:
+
+```bash
+qring doctor          # keyring backend, audit log, manifest, policy, qring-mcp on PATH
+qring doctor --json   # same, machine-readable
+```
+
+Set `QRING_DEBUG=1` to get full stack traces from any CLI error instead of the one-line message.
+
+## Keyring backend errors (most common first-run issue)
+
+q-ring stores secrets in the OS keychain via [`@napi-rs/keyring`](https://github.com/Brooooooklyn/keyring-node): GNOME Keyring / Secret Service on Linux, Keychain on macOS, Credential Manager on Windows.
+
+**Symptom:** `qring set` / `get` fails with a keyring error, or `qring doctor` reports the keyring probe failed.
+
+- **Headless Linux / SSH / CI:** there is usually no unlocked Secret Service. Install and start one:
+
+  ```bash
+  sudo apt install gnome-keyring dbus-x11        # Debian/Ubuntu
+  dbus-run-session -- sh -c 'echo "" | gnome-keyring-daemon --unlock; exec your-command'
+  ```
+
+  For CI pipelines, prefer `qring exec` / `qring ci:validate` on a runner with a keyring, or inject secrets through your CI's native secret store instead of q-ring.
+
+- **Linux desktop:** make sure the login keyring is unlocked (it usually unlocks with your session). KDE users need `ksecretservice` or GNOME Keyring installed.
+- **Docker:** containers have no OS keychain — the Docker image is for the MCP protocol surface and experiments, not durable storage (see the README's Docker section).
+
+## MCP server not connecting (Cursor / Kiro / Claude Code)
+
+1. `qring doctor` — confirms `qring-mcp` is on `PATH`. Editors spawn it by bare name; a shell alias is not enough.
+2. Install globally so the binary lands on `PATH`: `pnpm add -g @i4ctime/q-ring` (or npm/yarn/brew).
+3. GUI editors don't always inherit your shell's `PATH` (especially on macOS when launched from the Dock). If tools don't appear, set the absolute path in the MCP config:
+
+   ```json
+   { "mcpServers": { "q-ring": { "command": "/absolute/path/to/qring-mcp" } } }
+   ```
+
+   Find it with `command -v qring-mcp` (or `where qring-mcp` on Windows).
+4. Approve the server when the editor prompts (Claude Code asks per-project for `.mcp.json` servers).
+5. Still stuck? Run the handshake by hand — you should get a JSON `serverInfo` response:
+
+   ```bash
+   echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"probe","version":"0.0.0"}}}' | qring-mcp | head -1
+   ```
+
+## "Why can't the agent read my secret?" (approval gate)
+
+Secrets stored with `--requires-approval` (or matching `policy.secrets.requireApprovalForTags`) refuse MCP reads until you grant a scoped, time-boxed approval:
+
+```bash
+qring approve MY_KEY --for 3600 --reason "deploying"
+qring approvals        # see active grants, TTLs, and tamper status
+```
+
+The CLI itself is never gated — only MCP/agent reads are.
+
+## "My policy is being ignored" (MCP policy root pinning)
+
+Since 0.12.0 the MCP server resolves `.q-ring.json` **policy** from the directory it was launched in, not from the `projectPath` the agent passes (that closed a policy-escape hole). If your policy seems inactive over MCP:
+
+- make sure the editor launches `qring-mcp` with the project as its working directory, or
+- put the policy in the `.q-ring.json` at the server's launch directory.
+
+Project-scoped *secret* resolution still follows `projectPath` — only policy is pinned.
+
+## Audit log
+
+- Default location: `~/.config/q-ring/audit.jsonl`. Override with `QRING_AUDIT_DIR` (created if missing) — useful for tests and sandboxes.
+- `qring audit:verify` (or the dashboard's chain badge) checks the tamper-evident hash chain. A broken chain means the file was edited or partially deleted; export what you need (`qring audit:export`), then investigate before trusting the tail.
+
+## Scripting gotchas
+
+- Destructive commands (`delete`, `forget --all`, `teleport unpack` over existing keys, `wizard` over existing keys, `env:generate -o` over an existing file) prompt on a TTY and **error** on non-TTY stdin — pass `--yes`/`-y` in scripts.
+- Machine output: `--json` works on effectively the whole read surface and emits `{ "ok": true, "data": … }` (see [cli-mcp-parity.md](cli-mcp-parity.md)).
+- `qring get --raw` prints the bare value with no trailing newline — right for piping into other tools.
+- `qring has KEY --quiet` is the exit-code-only existence check (decay-aware: expired secrets count as absent).
+
+## AGPL questions
+
+q-ring is AGPL-3.0-only. Using the CLI/MCP server as a tool in your workflow does **not** make your projects AGPL — the license applies to q-ring itself and derivative works of it. If you modify q-ring and offer it as a network service, you must publish your modifications. Not legal advice; see [LICENSE](../LICENSE).

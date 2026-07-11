@@ -5,7 +5,7 @@ description: Set up q-ring for a new project — create manifests, detect enviro
 
 # Project Onboarding
 
-## When to use
+## When to Use
 
 Activate when the user:
 - Starts a new project and needs secret management
@@ -20,7 +20,7 @@ Activate when the user:
 
 Call `detect_environment` to determine the current context. Sources checked in order:
 1. Explicit `QRING_ENV`
-2. `NODE_ENV` (mapped: `production` → `prod`, `development` → `dev`)
+2. `NODE_ENV` (mapped: `production` -> `prod`, `development` -> `dev`)
 3. Git branch + `.q-ring.json` `branchMap` (supports globs like `release/*`)
 4. `.q-ring.json` `defaultEnv`
 
@@ -58,7 +58,7 @@ Help the user create a `.q-ring.json` file with:
 
 If the project has `.env` files, offer to import them with `import_dotenv`. Use `skipExisting: true` to avoid overwriting.
 
-### 5. Generate `.env` from manifest
+### 5. Generate .env from manifest
 
 Call `env_generate` to produce a `.env` file from the manifest with all declared secrets resolved from q-ring.
 
@@ -69,7 +69,7 @@ Call `register_hook` to set up notifications when secrets change:
 - HTTP hook: notify a deployment webhook
 - Signal hook: send SIGHUP to a running process
 
-Use `list_hooks` to inspect the registry and `remove_hook` to delete entries by id.
+Use **`list_hooks`** to inspect the registry and **`remove_hook`** to delete entries by id. (CLI-only: `qring hook enable|disable|test` for lifecycle control.)
 
 ### 7. Configure policy
 
@@ -80,7 +80,7 @@ Guide the user through the `policy` section of `.q-ring.json`:
 
 Call `get_policy_summary` to verify the policy is loaded correctly.
 
-## Best practices
+## Best Practices
 
 - Always create a `.q-ring.json` manifest for team projects — it serves as documentation and validation
 - Use `branchMap` to automatically detect environments from git branches

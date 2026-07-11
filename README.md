@@ -44,6 +44,19 @@ yarn global add @i4ctime/q-ring
 brew install i4ctime/tap/qring
 ```
 
+### Docker (MCP server)
+
+The repo ships a `Dockerfile` that builds the MCP server and exposes it through [`mcp-proxy`](https://github.com/punkpeye/mcp-proxy) — useful for hosted MCP deployments (e.g. Glama) or keeping the server off the host entirely:
+
+```bash
+git clone https://github.com/I4cTime/quantum_ring.git
+cd quantum_ring
+docker build -t qring-mcp .
+docker run --rm -p 8080:8080 qring-mcp
+```
+
+> Note: inside a container there is no OS keychain (GNOME Keyring / macOS Keychain), so this path is for the MCP protocol surface, ephemeral use, and CI experiments — not for durable local secret storage. For day-to-day use install the CLI natively via one of the package managers above.
+
 ## ⚡ Quick Start
 
 ```bash
@@ -61,6 +74,12 @@ qring generate --format api-key --prefix "sk-" --save MY_KEY
 
 # 5️⃣ Run a full health scan
 qring health
+
+# Something not working? Diagnose the install (keyring, audit, MCP wiring)
+qring doctor
+
+# Tab completion for your shell
+qring completion zsh > ~/.zsh/completions/_qring   # also: bash, fish
 ```
 
 ## Quantum Features
@@ -241,6 +260,9 @@ qring list --stale
 
 # Glob pattern on key name
 qring list --filter "API_*"
+
+# Script-friendly existence check (exit 0 if present, 1 if not; decay-aware)
+qring has OPENAI_API_KEY --quiet && echo "configured"
 ```
 
 ### Project Secret Manifest
@@ -944,7 +966,16 @@ Optional per-project configuration:
 - **`validationUrl`** configures the generic HTTP provider's endpoint for custom validation
 - **`policy`** defines governance rules for MCP tool gating, key access restrictions, exec allowlists, and secret lifecycle requirements
 
+## 📚 Docs
+
+- [Quickstart: Claude Code](docs/quickstart-claude-code.md) · [Cursor](docs/quickstart-cursor.md) · [Kiro](docs/quickstart-kiro.md)
+- [Troubleshooting](docs/troubleshooting.md) — keyring backends, MCP connection, approval gate, policy pinning
+- [CLI ↔ MCP parity](docs/cli-mcp-parity.md) — every command mapped to its MCP tool
+- [Releasing](docs/releasing.md) — tag-driven release flow
+
 ## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide (dev environment, conventions, files to keep in sync). The short version:
 
 - Run **`pnpm run lint`**, **`pnpm run typecheck`**, and **`pnpm run test:ci`** before opening a PR.
 - Tests or sandboxes can point the audit log elsewhere with **`QRING_AUDIT_DIR`** (directory is created if missing); default is `~/.config/q-ring/audit.jsonl`.

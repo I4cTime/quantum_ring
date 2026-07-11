@@ -13,7 +13,7 @@ import {
   registry as providerRegistry,
 } from "../../core/validate.js";
 import { c, SYMBOLS } from "../../utils/colors.js";
-import { wantsJsonOutput } from "../helpers.js";
+import { wantsJsonOutput, emitJson } from "../helpers.js";
 import { buildOpts } from "../options.js";
 
 export function registerValidationCommands(program: Command): void {
@@ -36,8 +36,12 @@ export function registerValidationCommands(program: Command): void {
       "Only validate manifest-declared secrets (with --all)",
     )
     .option("--list-providers", "List all available providers")
+    .option("--json", "Output as JSON")
     .action(async (key: string | undefined, cmd) => {
       if (cmd.listProviders) {
+        if (emitJson(program, cmd, { providers: providerRegistry.listProviders() })) {
+          return;
+        }
         console.log(
           c.bold(`\n  ${SYMBOLS.shield} Available validation providers\n`),
         );
@@ -72,10 +76,20 @@ export function registerValidationCommands(program: Command): void {
           }
         }
 
-        console.log(c.bold(`\n  ${SYMBOLS.shield} Validating secrets\n`));
+        const jsonMode = wantsJsonOutput(program, cmd);
+        if (!jsonMode) {
+          console.log(c.bold(`\n  ${SYMBOLS.shield} Validating secrets\n`));
+        }
 
         let validated = 0;
         let skipped = 0;
+        const jsonResults: Array<{
+          key: string;
+          status: string;
+          provider: string;
+          latencyMs: number;
+          message?: string;
+        }> = [];
 
         for (const entry of entries) {
           const value = getSecret(entry.key, { ...opts, scope: entry.scope });
@@ -93,6 +107,16 @@ export function registerValidationCommands(program: Command): void {
           }
 
           validated++;
+          if (jsonMode) {
+            jsonResults.push({
+              key: entry.key,
+              status: result.status,
+              provider: result.provider,
+              latencyMs: result.latencyMs,
+              message: result.status !== "valid" ? result.message : undefined,
+            });
+            continue;
+          }
           const icon =
             result.status === "valid"
               ? c.green(SYMBOLS.check)
@@ -111,6 +135,11 @@ export function registerValidationCommands(program: Command): void {
           );
         }
 
+        if (jsonMode) {
+          emitJson(program, cmd, { results: jsonResults, validated, skipped });
+          return;
+        }
+
         console.log(
           `\n  ${c.dim(`${validated} validated, ${skipped} skipped (no provider)`)}\n`,
         );
@@ -126,6 +155,18 @@ export function registerValidationCommands(program: Command): void {
       const envelope = getEnvelope(key!, opts);
       const provHint = envelope?.envelope.meta.provider ?? cmd.provider;
       const result = await validateSecret(value, { provider: provHint });
+
+      if (
+        emitJson(program, cmd, {
+          key,
+          status: result.status,
+          provider: result.provider,
+          latencyMs: result.latencyMs,
+          message: result.message,
+        })
+      ) {
+        return;
+      }
 
       const icon =
         result.status === "valid"
@@ -154,6 +195,7 @@ export function registerValidationCommands(program: Command): void {
     .option("-p, --project", "Project scope")
     .option("--project-path <path>", "Explicit project path")
     .option("--provider <name>", "Force a specific provider")
+    .option("--json", "Output as JSON")
     .action(async (key: string, cmd) => {
       const opts = buildOpts(cmd);
       const value = getSecret(key, opts);
@@ -169,6 +211,20 @@ export function registerValidationCommands(program: Command): void {
           ...opts,
           scope: opts.scope ?? "global",
         });
+      }
+
+      if (
+        emitJson(program, cmd, {
+          key,
+          rotated: !!(result.rotated && result.newValue),
+          provider: result.provider,
+          message: result.message,
+        })
+      ) {
+        return;
+      }
+
+      if (result.rotated && result.newValue) {
         console.log(
           `${SYMBOLS.check} ${c.green("Rotated")} ${c.bold(key)} via ${result.provider}`,
         );

@@ -24,6 +24,18 @@ if (marketplace.plugins?.[0]) {
 }
 writeFileSync(marketplacePath, JSON.stringify(marketplace, null, 2) + "\n", "utf8");
 
+// Claude Code plugin manifest + marketplace (mirrors the Cursor pair above).
+const claudePluginPath = join(root, "claude-code-plugin", ".claude-plugin", "plugin.json");
+const claudePlugin = JSON.parse(readFileSync(claudePluginPath, "utf8"));
+claudePlugin.version = v;
+writeFileSync(claudePluginPath, JSON.stringify(claudePlugin, null, 2) + "\n", "utf8");
+
+const claudeMarketplacePath = join(root, ".claude-plugin", "marketplace.json");
+const claudeMarketplace = JSON.parse(readFileSync(claudeMarketplacePath, "utf8"));
+if (claudeMarketplace.metadata) claudeMarketplace.metadata.version = v;
+for (const p of claudeMarketplace.plugins ?? []) p.version = v;
+writeFileSync(claudeMarketplacePath, JSON.stringify(claudeMarketplace, null, 2) + "\n", "utf8");
+
 // server.json drives the MCP Registry publish — keep its top-level version and
 // every npm package entry in lockstep, or `mcp-publisher` rejects a stale or
 // duplicate version at release time.
@@ -47,5 +59,5 @@ sec = sec.replace(
 writeFileSync(securityPath, sec, "utf8");
 
 console.log(
-  `sync-versions: set ${v} in plugin.json, marketplace.json, server.json, SECURITY.md`,
+  `sync-versions: set ${v} in cursor + claude plugin.json/marketplace.json, server.json, SECURITY.md`,
 );

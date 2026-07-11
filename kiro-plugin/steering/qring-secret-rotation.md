@@ -8,7 +8,7 @@ inclusion: manual
 
 Validate, rotate, and batch-check secrets against their providers.
 
-## When to use
+## When to Use
 
 Activate when the user:
 - Mentions expired, stale, or invalid secrets
@@ -61,8 +61,8 @@ Call `list_providers` to see all supported validation providers with their prefi
 - **`status_dashboard`** — starts the local quantum status dashboard (browser UI on localhost).
 - **`agent_scan`** — one-shot health scan JSON (same family as CLI `qring agent --once`).
 
-## Best practices
+## Best Practices
 
-- Store secrets with `rotationFormat` (e.g., `api-key`, `password`, `uuid`) to enable automatic rotation
-- Set `provider` metadata for automatic validation detection
+- Store secrets with `--rotation-format` (e.g., `api-key`, `password`, `uuid`) to enable automatic rotation
+- Set `--provider` metadata for automatic validation detection
 - Run `ci_validate_secrets` in CI pipelines to catch expired credentials before deployment

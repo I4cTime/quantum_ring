@@ -251,7 +251,7 @@ export function checkDecay(envelope: QuantumEnvelope): DecayStatus {
 
   const secondsRemaining = Math.floor(remaining / 1000);
 
-  let timeRemaining: string | null = null;
+  let timeRemaining = "expired";
   if (remaining > 0) {
     const days = Math.floor(remaining / 86400000);
     const hours = Math.floor((remaining % 86400000) / 3600000);
@@ -260,8 +260,6 @@ export function checkDecay(envelope: QuantumEnvelope): DecayStatus {
     if (days > 0) timeRemaining = `${days}d ${hours}h`;
     else if (hours > 0) timeRemaining = `${hours}h ${minutes}m`;
     else timeRemaining = `${minutes}m`;
-  } else {
-    timeRemaining = "expired";
   }
 
   return {

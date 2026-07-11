@@ -15,6 +15,7 @@ import {
   runPreCommitScan,
 } from "../../hooks/precommit.js";
 import { c, SYMBOLS } from "../../utils/colors.js";
+import { emitJson } from "../helpers.js";
 
 export function registerHookCommands(program: Command): void {
   // ─── Pre-Commit Hook ───
@@ -140,8 +141,10 @@ export function registerHookCommands(program: Command): void {
     .command("list")
     .alias("ls")
     .description("List all registered hooks")
-    .action(() => {
+    .option("--json", "Output as JSON")
+    .action((cmd) => {
       const hooks = listAllHooks();
+      if (emitJson(program, cmd, { hooks })) return;
       if (hooks.length === 0) {
         console.log(c.dim("No hooks registered"));
         return;
