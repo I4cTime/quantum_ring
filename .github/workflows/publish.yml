@@ -36,16 +36,16 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref || github.ref }}
 
       # pnpm version comes from the "packageManager" field in package.json;
       # do not also pin "version" here (pnpm/action-setup errors on conflict).
       # Must run before setup-node so `cache: pnpm` can find the pnpm binary.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           # Node 24 bundles npm 11.5+, which is the minimum required for
           # OIDC trusted publishing on npmjs.com. Node 22 ships npm 10.x,

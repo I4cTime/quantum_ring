@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Dependencies
+- **Fixed GHSA-h67p-54hq-rp68** (js-yaml quadratic-complexity DoS, dev-scope via eslint) with a `js-yaml >=4.2.0` override — resolves to 4.3.0.
+- **Majors:** `commander` 14→15 (CLI verified end-to-end), `eslint` 9→10 (three findings from newly-default rules fixed in code), `@types/node` 25→26; GitHub Actions `checkout` v7, `setup-node` v6, `pnpm/action-setup` v6, `codeql-action` v4.
+- **Minors:** in-range `pnpm update` across prod + dev deps; `vite` pin 8.0.16→8.1.4.
+
 ### Added
 - **`qring has <key>`** — script-friendly existence check (exit 0 if present, 1 if not; `--quiet` for exit-code-only, honors `--json`). Decay-aware like the MCP `has_secret` tool, closing the last MCP→CLI parity gap.
 - **Claude Code plugin is now a real installable plugin** — added `claude-code-plugin/.claude-plugin/plugin.json` and a repo-root `.claude-plugin/marketplace.json`, so it installs via `/plugin marketplace add I4cTime/quantum_ring` + `/plugin install qring@q-ring` instead of file copying. Plugin components (agents/commands/skills/hooks) moved from `claude-code-plugin/.claude/` to the plugin root to match the Claude Code plugin format; hooks are wired via `hooks/hooks.json` (`${CLAUDE_PLUGIN_ROOT}`) for plugin installs and `.claude/settings.json` for project-scoped sync installs. `sync-versions` now stamps both new manifests.

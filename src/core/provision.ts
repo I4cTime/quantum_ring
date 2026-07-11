@@ -95,7 +95,7 @@ const awsStsProvider: JitProvider = {
         expiresAt: creds.Expiration
       };
     } catch (err) {
-      throw new Error(`AWS STS provision failed: ${err instanceof Error ? err.message : String(err)}`);
+      throw new Error(`AWS STS provision failed: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
     }
   }
 };
@@ -175,7 +175,7 @@ req.end();
         expiresAt: new Date(Date.now() + expiresInSeconds * 1000).toISOString()
       };
     } catch (err) {
-      throw new Error(`HTTP provision failed: ${err instanceof Error ? err.message : String(err)}`);
+      throw new Error(`HTTP provision failed: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
     }
   }
 };
