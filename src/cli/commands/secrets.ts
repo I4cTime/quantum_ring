@@ -12,7 +12,7 @@ import {
 import type { Scope } from "../../core/scope.js";
 import { checkDecay } from "../../core/envelope.js";
 import { importDotenv } from "../../core/import.js";
-import { promptSecret } from "../../utils/prompt.js";
+import { promptSecret, confirm } from "../../utils/prompt.js";
 import {
   c,
   scopeColor,
@@ -20,7 +20,7 @@ import {
   envBadge,
   SYMBOLS,
 } from "../../utils/colors.js";
-import { safeStr, safeNum, safeArr, wantsJsonOutput } from "../helpers.js";
+import { safeStr, safeNum, safeArr, wantsJsonOutput, emitJson } from "../helpers.js";
 import { buildOpts } from "../options.js";
 import { filterSecretsByKeyGlob } from "../../services/list-secrets-filter.js";
 
@@ -176,16 +176,26 @@ export function registerSecretsCommands(program: Command): void {
     .option("-g, --global", "Delete from global scope only")
     .option("-p, --project", "Delete from project scope only")
     .option("--project-path <path>", "Explicit project path")
-    .action((key: string, cmd) => {
+    .option("-y, --yes", "Skip the confirmation prompt")
+    .option("--json", "Output as JSON")
+    .action(async (key: string, cmd) => {
       const opts = buildOpts(cmd);
+
+      if (!(await confirm(`Delete secret ${key}?`, { assumeYes: cmd.yes }))) {
+        console.error(c.dim("Aborted."));
+        process.exitCode = 1;
+        return;
+      }
+
       const deleted = deleteSecret(key, opts);
 
-      if (deleted) {
-        console.log(`${SYMBOLS.check} ${c.green("deleted")} ${c.bold(key)}`);
-      } else {
+      if (!deleted) {
         console.error(c.red(`${SYMBOLS.cross} Secret "${key}" not found`));
         process.exit(1);
       }
+
+      if (emitJson(program, cmd, { key, deleted: true })) return;
+      console.log(`${SYMBOLS.check} ${c.green("deleted")} ${c.bold(key)}`);
     });
 
   program
@@ -202,6 +212,7 @@ export function registerSecretsCommands(program: Command): void {
     .option("--expired", "Show only expired secrets")
     .option("--stale", "Show only stale secrets (75%+ decay)")
     .option("-f, --filter <pattern>", "Glob pattern on key name")
+    .option("--json", "Output as JSON")
     .action((cmd) => {
       const opts = buildOpts(cmd);
       let entries = listSecrets(opts);
@@ -221,6 +232,27 @@ export function registerSecretsCommands(program: Command): void {
       }
       if (cmd.filter) {
         entries = filterSecretsByKeyGlob(entries, cmd.filter);
+      }
+
+      if (
+        emitJson(
+          program,
+          cmd,
+          entries.map((e) => ({
+            key: safeStr(e.key),
+            scope: safeStr(e.scope),
+            type: e.envelope?.states ? "superposition" : "collapsed",
+            environments: e.envelope?.states
+              ? Object.keys(e.envelope.states).map(safeStr)
+              : undefined,
+            tags: safeArr(e.envelope?.meta.tags),
+            accessCount: safeNum(e.envelope?.meta.accessCount),
+            entangledCount: safeNum(e.envelope?.meta.entangled?.length),
+            decay: e.decay ?? null,
+          })),
+        )
+      ) {
+        return;
       }
 
       if (entries.length === 0) {
@@ -287,6 +319,7 @@ export function registerSecretsCommands(program: Command): void {
     .option("-g, --global", "Inspect global scope only")
     .option("-p, --project", "Inspect project scope only")
     .option("--project-path <path>", "Explicit project path")
+    .option("--json", "Output as JSON")
     .action((key: string, cmd) => {
       const opts = buildOpts(cmd);
       const result = getEnvelope(key, opts);
@@ -298,6 +331,35 @@ export function registerSecretsCommands(program: Command): void {
 
       const { envelope, scope } = result;
       const decay = checkDecay(envelope);
+
+      if (
+        emitJson(program, cmd, {
+          key: safeStr(key),
+          scope: safeStr(scope),
+          type: envelope.states ? "superposition" : "collapsed",
+          environments: envelope.states
+            ? Object.keys(envelope.states).map(safeStr)
+            : undefined,
+          defaultEnv: envelope.defaultEnv ? safeStr(envelope.defaultEnv) : undefined,
+          createdAt: safeStr(envelope.meta.createdAt),
+          updatedAt: safeStr(envelope.meta.updatedAt),
+          accessCount: safeNum(envelope.meta.accessCount),
+          lastAccessedAt: envelope.meta.lastAccessedAt
+            ? safeStr(envelope.meta.lastAccessedAt)
+            : undefined,
+          description: envelope.meta.description
+            ? safeStr(envelope.meta.description)
+            : undefined,
+          tags: safeArr(envelope.meta.tags),
+          entangled: (envelope.meta.entangled ?? []).map((l) => ({
+            service: safeStr(l.service),
+            key: safeStr(l.key),
+          })),
+          decay,
+        })
+      ) {
+        return;
+      }
 
       const safeScope = safeStr(scope) as Scope;
       const createdAt = safeStr(envelope.meta.createdAt);
@@ -398,6 +460,7 @@ export function registerSecretsCommands(program: Command): void {
     .option("-e, --env <env>", "Environment context")
     .option("--skip-existing", "Skip keys that already exist")
     .option("--dry-run", "Preview what would be imported without saving")
+    .option("--json", "Output as JSON")
     .action((file: string, cmd) => {
       const opts = buildOpts(cmd);
 
@@ -408,6 +471,10 @@ export function registerSecretsCommands(program: Command): void {
         skipExisting: cmd.skipExisting,
         dryRun: cmd.dryRun,
       });
+
+      if (emitJson(program, cmd, { file, dryRun: !!cmd.dryRun, ...result })) {
+        return;
+      }
 
       if (cmd.dryRun) {
         console.log(

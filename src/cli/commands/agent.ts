@@ -10,7 +10,8 @@ import {
   clearMemory,
 } from "../../core/memory.js";
 import { c, SYMBOLS } from "../../utils/colors.js";
-import { safeStr } from "../helpers.js";
+import { safeStr, emitJson } from "../helpers.js";
+import { confirm } from "../../utils/prompt.js";
 import { buildOpts } from "../options.js";
 
 export function registerAgentCommands(program: Command): void {
@@ -29,9 +30,19 @@ export function registerAgentCommands(program: Command): void {
   program
     .command("recall [key]")
     .description("Retrieve a value from agent memory, or list all keys")
-    .action((key?: string) => {
+    .option("--json", "Output as JSON (list mode only)")
+    .action((key: string | undefined, cmd) => {
       if (!key) {
         const entries = listMemory();
+        if (
+          emitJson(
+            program,
+            cmd,
+            entries.map((e) => ({ key: e.key, updatedAt: e.updatedAt })),
+          )
+        ) {
+          return;
+        }
         if (entries.length === 0) {
           console.log(c.dim("Agent memory is empty."));
           return;
@@ -60,8 +71,20 @@ export function registerAgentCommands(program: Command): void {
     .command("forget <key>")
     .description("Delete a key from agent memory")
     .option("--all", "Clear all agent memory")
-    .action((key: string, cmd) => {
+    .option("-y, --yes", "Skip the confirmation prompt")
+    .action(async (key: string, cmd) => {
       if (cmd.all) {
+        const count = listMemory().length;
+        if (
+          !(await confirm(
+            `Clear ALL agent memory (${count} entr${count === 1 ? "y" : "ies"})? This cannot be undone.`,
+            { assumeYes: cmd.yes },
+          ))
+        ) {
+          console.error(c.dim("Aborted."));
+          process.exitCode = 1;
+          return;
+        }
         clearMemory();
         console.log(`${SYMBOLS.check} ${c.yellow("cleared")} all agent memory`);
         return;
@@ -84,12 +107,11 @@ export function registerAgentCommands(program: Command): void {
     .option("-g, --global", "Global scope only")
     .option("-p, --project", "Project scope only")
     .option("--project-path <path>", "Explicit project path")
+    .option("--json", "Output as JSON")
     .action((cmd) => {
       const opts = buildOpts(cmd);
       const entries = listSecrets({ ...opts, silent: true });
       const audit = queryAudit({ limit: 1000 });
-
-      console.log(`\n${SYMBOLS.zap} ${c.bold("Secret Usage Analysis")}\n`);
 
       const accessMap = new Map<string, number>();
       for (const e of audit) {
@@ -99,6 +121,44 @@ export function registerAgentCommands(program: Command): void {
       }
 
       const sorted = [...accessMap.entries()].sort((a, b) => b[1] - a[1]);
+      const neverAccessed = entries.filter((e) => {
+        const count = e.envelope?.meta.accessCount ?? 0;
+        return count === 0;
+      });
+      const jsonExpired = entries.filter((e) => e.decay?.isExpired);
+      const jsonStale = entries.filter(
+        (e) => e.decay?.isStale && !e.decay?.isExpired,
+      );
+      const jsonNoRotation = entries.filter(
+        (e) => !e.envelope?.meta.rotationFormat && !e.decay?.isExpired,
+      );
+
+      if (
+        emitJson(program, cmd, {
+          mostAccessed: sorted
+            .slice(0, 5)
+            .map(([key, reads]) => ({ key, reads })),
+          neverAccessed: neverAccessed.map((e) => e.key),
+          expired: jsonExpired.map((e) => e.key),
+          stale: jsonStale.map((e) => ({
+            key: e.key,
+            timeRemaining: e.decay?.timeRemaining ?? null,
+          })),
+          summary: {
+            total: entries.length,
+            active: entries.length - jsonExpired.length,
+            expired: jsonExpired.length,
+            stale: jsonStale.length,
+            neverAccessed: neverAccessed.length,
+            withRotationConfig: entries.length - jsonNoRotation.length,
+          },
+        })
+      ) {
+        return;
+      }
+
+      console.log(`\n${SYMBOLS.zap} ${c.bold("Secret Usage Analysis")}\n`);
+
       if (sorted.length > 0) {
         console.log(`  ${c.bold("Most accessed:")}`);
         for (const [key, count] of sorted.slice(0, 5)) {
@@ -107,10 +167,6 @@ export function registerAgentCommands(program: Command): void {
         console.log();
       }
 
-      const neverAccessed = entries.filter((e) => {
-        const count = e.envelope?.meta.accessCount ?? 0;
-        return count === 0;
-      });
       if (neverAccessed.length > 0) {
         console.log(
           `  ${c.bold("Never accessed:")} ${c.yellow(neverAccessed.length.toString())} secrets`,

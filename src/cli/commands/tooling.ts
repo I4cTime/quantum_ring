@@ -3,6 +3,7 @@ import { execCommand } from "../../core/exec.js";
 import { scanCodebase } from "../../core/scan.js";
 import { lintFiles } from "../../core/linter.js";
 import { c, SYMBOLS } from "../../utils/colors.js";
+import { emitJson, wantsJsonOutput } from "../helpers.js";
 import { buildOpts } from "../options.js";
 
 export function registerToolingCommands(program: Command): void {
@@ -56,14 +57,24 @@ export function registerToolingCommands(program: Command): void {
     .option("-g, --global", "Store fixed secrets in global scope")
     .option("-p, --project", "Store fixed secrets in project scope")
     .option("--project-path <path>", "Explicit project path")
+    .option("--json", "Output as JSON")
     .action((dir: string | undefined, cmd) => {
       const targetDir = dir ?? process.cwd();
       const fixMode = cmd.fix === true;
-      console.log(
-        `\n  ${SYMBOLS.eye} Scanning ${c.bold(targetDir)} for secrets...${fixMode ? c.yellow(" [--fix mode]") : ""}\n`,
-      );
+      const jsonMode = wantsJsonOutput(program, cmd);
+      if (!jsonMode) {
+        console.log(
+          `\n  ${SYMBOLS.eye} Scanning ${c.bold(targetDir)} for secrets...${fixMode ? c.yellow(" [--fix mode]") : ""}\n`,
+        );
+      }
 
       const results = scanCodebase(targetDir);
+
+      if (jsonMode && !fixMode) {
+        emitJson(program, cmd, { dir: targetDir, findings: results });
+        if (results.length > 0) process.exitCode = 1;
+        return;
+      }
 
       if (results.length === 0) {
         console.log(
@@ -85,6 +96,14 @@ export function registerToolingCommands(program: Command): void {
           projectPath: opts.projectPath,
         });
         const fixedCount = lintResults.filter((r) => r.fixed).length;
+        if (jsonMode) {
+          emitJson(program, cmd, {
+            dir: targetDir,
+            findings: results,
+            fixed: fixedCount,
+          });
+          return;
+        }
         console.log(
           `  ${c.green(SYMBOLS.check)} Fixed ${fixedCount} secrets — replaced with process.env references and stored in q-ring.\n`,
         );
@@ -118,6 +137,7 @@ export function registerToolingCommands(program: Command): void {
     .option("-g, --global", "Store fixed secrets in global scope")
     .option("-p, --project", "Store fixed secrets in project scope")
     .option("--project-path <path>", "Explicit project path")
+    .option("--json", "Output as JSON")
     .action((files: string[], cmd) => {
       const opts = buildOpts(cmd);
       const results = lintFiles(files, {
@@ -125,6 +145,11 @@ export function registerToolingCommands(program: Command): void {
         scope: opts.scope,
         projectPath: opts.projectPath,
       });
+
+      if (emitJson(program, cmd, { files, findings: results })) {
+        if (results.some((r) => !r.fixed)) process.exitCode = 1;
+        return;
+      }
 
       if (results.length === 0) {
         console.log(

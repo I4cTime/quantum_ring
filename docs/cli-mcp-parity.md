@@ -73,10 +73,23 @@ approval gates.
 
 ## JSON output
 
-- **Global:** `qring --json …` applies to commands that support machine
-  output (see `wantsJsonOutput` in `src/cli/helpers.ts`).
-- **Per-flag:** `qring context --json`, `qring ci:validate --json`,
-  `qring policy --json` remain valid aliases.
+- **Global:** `qring --json …` (or `--json` on the subcommand) emits
+  `{ "ok": true, "data": … }` for: `get`, `has`, `delete`, `list`, `inspect`,
+  `import`, `audit`, `audit:verify`, `health`, `analyze`, `recall` (list
+  mode), `check`, `env`, `validate` (single, `--all`, `--list-providers`),
+  `rotate`, `tunnel list`, `hook list`, `approvals`, `scan`, `lint`.
+  See `emitJson` in `src/cli/helpers.ts`.
+- **Legacy shapes:** `qring context --json`, `qring ci:validate --json`, and
+  `qring policy --json` print their payload without the `{ok, data}` envelope
+  (kept for backward compatibility).
+
+## Destructive-operation confirmations
+
+`delete`, `forget --all`, `teleport unpack` (when it would overwrite existing
+keys), `wizard` (when its generated keys already exist), and
+`env:generate -o` (when the output file exists) prompt for confirmation on a
+TTY. Pass `-y`/`--yes` to skip; non-interactive use without `--yes` is an
+error, never a silent yes.
 
 ## Intentional differences
 

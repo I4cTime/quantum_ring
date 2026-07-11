@@ -1,5 +1,34 @@
 import { createInterface } from "node:readline";
 
+/**
+ * Ask the user to confirm a destructive action. Resolves true only on an
+ * explicit yes. Non-interactive callers must pass `assumeYes` (--yes/-y);
+ * otherwise a non-TTY stdin is an error rather than a silent yes.
+ */
+export async function confirm(
+  message: string,
+  { assumeYes = false }: { assumeYes?: boolean } = {},
+): Promise<boolean> {
+  if (assumeYes) return true;
+  if (!process.stdin.isTTY) {
+    throw new Error(
+      "Confirmation required but stdin is not a terminal. Pass --yes to proceed non-interactively.",
+    );
+  }
+
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stderr,
+    terminal: true,
+  });
+
+  const answer = await new Promise<string>((resolve) => {
+    rl.question(`${message} [y/N] `, resolve);
+  });
+  rl.close();
+  return /^y(es)?$/i.test(answer.trim());
+}
+
 export async function promptSecret(message: string): Promise<string> {
   const stdin = process.stdin;
 

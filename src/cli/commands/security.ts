@@ -6,7 +6,7 @@ import {
 } from "../../core/approval.js";
 import { getPolicySummary } from "../../core/policy.js";
 import { c, SYMBOLS } from "../../utils/colors.js";
-import { wantsJsonOutput } from "../helpers.js";
+import { wantsJsonOutput, emitJson } from "../helpers.js";
 import { buildOpts } from "../options.js";
 
 export function registerSecurityCommands(program: Command): void {
@@ -79,8 +79,10 @@ export function registerSecurityCommands(program: Command): void {
   program
     .command("approvals")
     .description("List all approval tokens with verification status")
-    .action(() => {
+    .option("--json", "Output as JSON")
+    .action((cmd) => {
       const approvals = listApprovals();
+      if (emitJson(program, cmd, { approvals })) return;
       if (approvals.length === 0) {
         console.log(c.dim("  No approvals found"));
         return;

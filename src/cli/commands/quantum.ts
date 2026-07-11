@@ -2,6 +2,7 @@ import type { Command } from "commander";
 import {
   getSecret,
   setSecret,
+  hasSecret,
   listSecrets,
   entangleSecrets,
   disentangleSecrets,
@@ -19,8 +20,9 @@ import {
   tunnelList,
 } from "../../core/tunnel.js";
 import { teleportPack, teleportUnpack } from "../../core/teleport.js";
-import { promptSecret } from "../../utils/prompt.js";
+import { promptSecret, confirm } from "../../utils/prompt.js";
 import { c, SYMBOLS } from "../../utils/colors.js";
+import { emitJson } from "../helpers.js";
 import { buildOpts } from "../options.js";
 
 export function registerQuantumCommands(program: Command): void {
@@ -175,8 +177,10 @@ export function registerQuantumCommands(program: Command): void {
     .command("list")
     .alias("ls")
     .description("List active tunnels")
-    .action(() => {
+    .option("--json", "Output as JSON")
+    .action((cmd) => {
       const tunnels = tunnelList();
+      if (emitJson(program, cmd, { tunnels })) return;
       if (tunnels.length === 0) {
         console.log(c.dim("No active tunnels"));
         return;
@@ -259,6 +263,7 @@ export function registerQuantumCommands(program: Command): void {
     .option("-p, --project", "Import to project scope")
     .option("--project-path <path>", "Explicit project path")
     .option("--dry-run", "Show what would be imported without saving")
+    .option("-y, --yes", "Overwrite existing secrets without asking")
     .action(async (bundle: string | undefined, cmd) => {
       if (!bundle) {
         const chunks: Buffer[] = [];
@@ -272,29 +277,11 @@ export function registerQuantumCommands(program: Command): void {
         `${SYMBOLS.lock} Enter passphrase for decryption: `,
       );
 
+      // Only the decrypt itself maps to "wrong passphrase" — errors from the
+      // confirm/import steps below must not be swallowed by this catch.
+      let payload: ReturnType<typeof teleportUnpack>;
       try {
-        const payload = teleportUnpack(bundle, passphrase);
-
-        if (cmd.dryRun) {
-          console.log(
-            `\n${SYMBOLS.package} ${c.bold("Would import")} (${payload.secrets.length} secrets):\n`,
-          );
-          for (const s of payload.secrets) {
-            console.log(
-              `  ${SYMBOLS.key} ${c.bold(s.key)} ${c.dim(`[${s.scope ?? "global"}]`)}`,
-            );
-          }
-          return;
-        }
-
-        const opts = buildOpts(cmd);
-        for (const s of payload.secrets) {
-          setSecret(s.key, s.value, opts);
-        }
-
-        console.log(
-          `${SYMBOLS.check} ${c.green("imported")} ${payload.secrets.length} secret(s) from teleport bundle`,
-        );
+        payload = teleportUnpack(bundle, passphrase);
       } catch {
         console.error(
           c.red(
@@ -303,5 +290,42 @@ export function registerQuantumCommands(program: Command): void {
         );
         process.exit(1);
       }
+
+      if (cmd.dryRun) {
+        console.log(
+          `\n${SYMBOLS.package} ${c.bold("Would import")} (${payload.secrets.length} secrets):\n`,
+        );
+        for (const s of payload.secrets) {
+          console.log(
+            `  ${SYMBOLS.key} ${c.bold(s.key)} ${c.dim(`[${s.scope ?? "global"}]`)}`,
+          );
+        }
+        return;
+      }
+
+      const opts = buildOpts(cmd);
+
+      const existing = payload.secrets
+        .map((s) => s.key)
+        .filter((k) => hasSecret(k, opts));
+      if (
+        existing.length > 0 &&
+        !(await confirm(
+          `${existing.length} existing secret(s) will be overwritten: ${existing.join(", ")}. Continue?`,
+          { assumeYes: cmd.yes },
+        ))
+      ) {
+        console.error(c.dim("Aborted."));
+        process.exitCode = 1;
+        return;
+      }
+
+      for (const s of payload.secrets) {
+        setSecret(s.key, s.value, opts);
+      }
+
+      console.log(
+        `${SYMBOLS.check} ${c.green("imported")} ${payload.secrets.length} secret(s) from teleport bundle`,
+      );
     });
 }
