@@ -10,18 +10,25 @@ import {
 
 describe("approval HMAC", () => {
   let prevHome: string | undefined;
+  let prevUserProfile: string | undefined;
   let dir: string;
 
   beforeEach(() => {
     prevHome = process.env.HOME;
+    prevUserProfile = process.env.USERPROFILE;
     dir = join(tmpdir(), `qring-approval-${Date.now()}-${Math.random().toString(16).slice(2)}`);
     mkdirSync(dir, { recursive: true });
+    // os.homedir() reads HOME on POSIX but USERPROFILE on Windows — set both
+    // so the approval store is actually redirected on every platform.
     process.env.HOME = dir;
+    process.env.USERPROFILE = dir;
   });
 
   afterEach(() => {
     if (prevHome === undefined) delete process.env.HOME;
     else process.env.HOME = prevHome;
+    if (prevUserProfile === undefined) delete process.env.USERPROFILE;
+    else process.env.USERPROFILE = prevUserProfile;
     rmSync(dir, { recursive: true, force: true });
   });
 

@@ -32,7 +32,7 @@ approval gates.
 | Concern            | CLI                                              | MCP                                                             |
 | ------------------ | ------------------------------------------------ | --------------------------------------------------------------- |
 | Secret CRUD        | `set` `get` `delete` `list` `inspect` `export` `import` | `set_secret` `get_secret` `delete_secret` `list_secrets` `inspect_secret` `export_secrets` `import_dotenv` |
-| Existence check    | `list` / `inspect`                               | `has_secret`                                                    |
+| Existence check    | `has` (exit 0/1, `--quiet` for scripts)          | `has_secret`                                                    |
 | Generation         | `generate`                                       | `generate_secret`                                               |
 | Entanglement       | `entangle` / `disentangle`                       | `entangle_secrets` / `disentangle_secrets`                      |
 | Tunnel             | `tunnel create/read/destroy/list`                | `tunnel_create` / `tunnel_read` / `tunnel_destroy` / `tunnel_list` |
@@ -64,20 +64,34 @@ approval gates.
 | `hook:install` / `hook:uninstall` / `hook:run`            | Git pre-commit wiring                                           |
 | `qring wizard`                                            | Interactive service setup                                       |
 | `hook enable` / `disable` / `test`                        | Runtime lifecycle for secret-change hooks                       |
+| `qring doctor`                                            | Install self-check (keyring, audit, manifest, MCP binary)       |
+| `qring completion <shell>`                                | bash/zsh/fish completion scripts generated from the CLI itself  |
 
 ## MCP-only (no CLI subcommand)
 
 | MCP tool        | Notes                                                                            |
 | --------------- | -------------------------------------------------------------------------------- |
-| `has_secret`    | Existence check — CLI users can use `qring inspect` or `qring list --filter`.    |
 | `check_policy`  | Programmatic policy probe — CLI surfaces the same information via `qring policy`. |
 
 ## JSON output
 
-- **Global:** `qring --json …` applies to commands that support machine
-  output (see `wantsJsonOutput` in `src/cli/helpers.ts`).
-- **Per-flag:** `qring context --json`, `qring ci:validate --json`,
-  `qring policy --json` remain valid aliases.
+- **Global:** `qring --json …` (or `--json` on the subcommand) emits
+  `{ "ok": true, "data": … }` for: `get`, `has`, `delete`, `list`, `inspect`,
+  `import`, `audit`, `audit:verify`, `health`, `analyze`, `recall` (list
+  mode), `check`, `env`, `validate` (single, `--all`, `--list-providers`),
+  `rotate`, `tunnel list`, `hook list`, `approvals`, `scan`, `lint`.
+  See `emitJson` in `src/cli/helpers.ts`.
+- **Legacy shapes:** `qring context --json`, `qring ci:validate --json`, and
+  `qring policy --json` print their payload without the `{ok, data}` envelope
+  (kept for backward compatibility).
+
+## Destructive-operation confirmations
+
+`delete`, `forget --all`, `teleport unpack` (when it would overwrite existing
+keys), `wizard` (when its generated keys already exist), and
+`env:generate -o` (when the output file exists) prompt for confirmation on a
+TTY. Pass `-y`/`--yes` to skip; non-interactive use without `--yes` is an
+error, never a silent yes.
 
 ## Intentional differences
 

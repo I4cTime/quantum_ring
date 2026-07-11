@@ -3,9 +3,17 @@ name: Update Homebrew Tap
 on:
   release:
     types: [published]
+  # Called from release.yml on tag push (GITHUB_TOKEN-created releases don't
+  # emit events). GITHUB_REF_NAME is the tag in both paths.
+  workflow_call:
 
 permissions:
   contents: read
+
+# One formula update at a time; never cancel one mid-push.
+concurrency:
+  group: update-homebrew
+  cancel-in-progress: false
 
 jobs:
   update-formula:
@@ -35,9 +43,16 @@ jobs:
       - name: Compute tarball sha256
         id: sha
         run: |
+          set -euo pipefail
           VERSION="${{ steps.version.outputs.version }}"
           URL="https://registry.npmjs.org/@i4ctime/q-ring/-/q-ring-${VERSION}.tgz"
-          SHA=$(curl -sL "$URL" | sha256sum | awk '{print $1}')
+          # -f makes a 404 fail the download instead of hashing an error page.
+          curl -fsSL "$URL" -o /tmp/qring.tgz
+          SHA=$(sha256sum /tmp/qring.tgz | awk '{print $1}')
+          if [ -z "$SHA" ]; then
+            echo "::error::Failed to compute sha256 for ${URL}"
+            exit 1
+          fi
           echo "sha256=${SHA}" >> "$GITHUB_OUTPUT"
           echo "url=${URL}" >> "$GITHUB_OUTPUT"
           echo "SHA256: ${SHA}"
@@ -68,7 +83,8 @@ jobs:
             end
 
             test do
-              assert_match "qring", shell_output("#{bin}/qring --version")
+              # \`qring --version\` prints the bare version (Commander default).
+              assert_match "${VERSION}", shell_output("#{bin}/qring --version")
             end
           end
           RUBY
@@ -80,5 +96,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Formula/qring.rb
-          git commit -m "Update qring to ${VERSION}"
-          git push
+          if git diff --cached --quiet; then
+            echo "Formula already up to date for ${VERSION} — nothing to push."
+          else
+            git commit -m "Update qring to ${VERSION}"
+            git push
+          fi

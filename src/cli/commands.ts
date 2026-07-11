@@ -10,6 +10,8 @@ import { registerAuditCommands } from "./commands/audit.js";
 import { registerHookCommands } from "./commands/hooks.js";
 import { registerAgentCommands } from "./commands/agent.js";
 import { registerSecurityCommands } from "./commands/security.js";
+import { registerDoctorCommand } from "./commands/doctor.js";
+import { registerCompletionCommand } from "./commands/completion.js";
 
 /**
  * Display groups for the CLI help screen.
@@ -28,6 +30,7 @@ const COMMAND_GROUPS: Array<{
     commands: [
       "set",
       "get",
+      "has",
       "delete",
       "list",
       "inspect",
@@ -59,7 +62,7 @@ const COMMAND_GROUPS: Array<{
   {
     name: "Dev Tooling",
     symbol: SYMBOLS.zap,
-    commands: ["exec", "scan", "lint", "status"],
+    commands: ["exec", "scan", "lint", "status", "doctor", "completion"],
   },
   {
     name: "Audit & Health",
@@ -231,6 +234,8 @@ export function createProgram(): Command {
   registerHookCommands(program);
   registerAgentCommands(program);
   registerSecurityCommands(program);
+  registerDoctorCommand(program);
+  registerCompletionCommand(program);
 
   return program;
 }

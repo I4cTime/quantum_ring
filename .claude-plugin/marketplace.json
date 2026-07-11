@@ -1,0 +1,32 @@
+{
+  "name": "q-ring",
+  "owner": {
+    "name": "I4cTime",
+    "url": "https://github.com/I4cTime"
+  },
+  "metadata": {
+    "description": "Quantum keyring for AI coding tools — secrets, superposition, entanglement, MCP.",
+    "version": "0.12.0"
+  },
+  "plugins": [
+    {
+      "name": "qring",
+      "source": "./claude-code-plugin",
+      "description": "Quantum keyring for AI agents — manage secrets, scan for leaks, rotate keys, and enforce policy directly from Claude Code.",
+      "version": "0.12.0",
+      "author": {
+        "name": "I4cTime"
+      },
+      "homepage": "https://qring.i4c.studio",
+      "license": "AGPL-3.0",
+      "keywords": [
+        "secrets",
+        "keyring",
+        "security",
+        "mcp",
+        "api-keys"
+      ],
+      "category": "security"
+    }
+  ]
+}

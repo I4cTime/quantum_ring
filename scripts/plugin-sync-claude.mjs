@@ -16,13 +16,19 @@
  *   # Force overwrite of existing settings.json, .mcp.json, CLAUDE.md
  *   node scripts/plugin-sync-claude.mjs --force
  *
- * Project-scoped layout:
+ * NOTE: this script is the manual, project-scoped install path. If you just
+ * want the plugin, install it through Claude Code's plugin system instead:
+ *   /plugin marketplace add I4cTime/quantum_ring
+ *   /plugin install qring@q-ring
+ *
+ * Project-scoped layout (source dirs live at the plugin root, matching the
+ * Claude Code plugin format; they are copied under .claude/ for project use):
  *   claude-code-plugin/CLAUDE.md            -> $DEST/CLAUDE.md
  *   claude-code-plugin/.mcp.json            -> $DEST/.mcp.json
- *   claude-code-plugin/.claude/agents/*     -> $DEST/.claude/agents/
- *   claude-code-plugin/.claude/commands/*   -> $DEST/.claude/commands/
- *   claude-code-plugin/.claude/skills/*     -> $DEST/.claude/skills/
- *   claude-code-plugin/.claude/hooks/*      -> $DEST/.claude/hooks/
+ *   claude-code-plugin/agents/*             -> $DEST/.claude/agents/
+ *   claude-code-plugin/commands/*           -> $DEST/.claude/commands/
+ *   claude-code-plugin/skills/*             -> $DEST/.claude/skills/
+ *   claude-code-plugin/hooks/*              -> $DEST/.claude/hooks/  (except hooks.json, plugin-only)
  *   claude-code-plugin/.claude/settings.json -> $DEST/.claude/settings.json
  *
  * Files inside agents/, commands/, skills/, and hooks/ are namespaced (qring-*,
@@ -82,12 +88,15 @@ const writeOrTemplate = (from, to) => {
 
 const subdirs = ["agents", "commands", "skills", "hooks"];
 for (const sub of subdirs) {
-  const srcDir = join(claudeSrc, sub);
+  const srcDir = join(src, sub);
   if (!existsSync(srcDir) || !statSync(srcDir).isDirectory()) continue;
   const destDir = join(claudeDest, sub);
   mkdirSync(destDir, { recursive: true });
   for (const entry of readdirSync(srcDir)) {
     if (entry.startsWith(".")) continue;
+    // hooks.json is the plugin-format manifest (uses ${CLAUDE_PLUGIN_ROOT});
+    // project installs wire hooks via .claude/settings.json instead.
+    if (sub === "hooks" && entry === "hooks.json") continue;
     const from = join(srcDir, entry);
     const to = join(destDir, entry);
     cpSync(from, to, { recursive: true });

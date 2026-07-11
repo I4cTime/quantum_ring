@@ -31,9 +31,6 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Security audit
-        run: pnpm audit --audit-level=high
-
       - name: Typecheck
         run: pnpm run typecheck
 
@@ -45,3 +42,117 @@ jobs:
 
       - name: Test
         run: pnpm run test:ci
+
+      # Exercise the actual published entry points so a broken shebang,
+      # bundling regression, or bad bin mapping fails CI instead of a release.
+      - name: Smoke test built CLI
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          OUT=$(node dist/index.js --version)
+          if [ "$OUT" != "$VER" ]; then
+            echo "::error::qring --version printed '$OUT', expected '$VER'"
+            exit 1
+          fi
+          node dist/index.js --help > /dev/null
+
+      - name: Smoke test MCP server (initialize handshake)
+        run: |
+          REQ='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci-smoke","version":"0.0.0"}}}'
+          RESP=$( (printf '%s\n' "$REQ" | timeout 15 node dist/mcp.js | head -n 1) || true )
+          if ! printf '%s' "$RESP" | grep -q '"serverInfo"'; then
+            echo "::error::qring-mcp did not answer the initialize request"
+            printf 'got: %s\n' "$RESP"
+            exit 1
+          fi
+
+  # Plugins must stay in lockstep: same commands/agents/skills across
+  # Cursor/Claude/Kiro, doc'd tool counts matching the code, versions stamped,
+  # and generated artifacts (skills, dashboard bundle) freshly regenerated.
+  parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Plugin parity + generated skills up to date
+        run: pnpm run check:parity
+
+      - name: Dashboard client bundle is fresh
+        run: |
+          pnpm run build:dashboard
+          git diff --exit-code src/core/dashboard-client.ts
+
+  # Cross-platform / node-range coverage. The keyring backend differs per OS
+  # (Secret Service / macOS Keychain / Windows Credential Manager), and
+  # engines declares >=18 while the primary job only exercises ubuntu+22.
+  # Experimental (continue-on-error) until proven green; then make blocking.
+  compat:
+    name: compat (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # engines floor — build + smoke only (vitest 4 requires Node 20+)
+          - { os: ubuntu-latest, node: 18, tests: false }
+          - { os: ubuntu-latest, node: 24, tests: true }
+          - { os: macos-latest, node: 22, tests: true }
+          - { os: windows-latest, node: 22, tests: true }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
+
+      - name: Test
+        if: matrix.tests
+        run: pnpm run test:ci
+
+      - name: Smoke test built CLI
+        shell: bash
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          OUT=$(node dist/index.js --version)
+          if [ "$OUT" != "$VER" ]; then
+            echo "::error::qring --version printed '$OUT', expected '$VER'"
+            exit 1
+          fi
+          node dist/index.js --help > /dev/null
+
+  # Advisory-only: a freshly disclosed CVE in a transitive dep should not
+  # block unrelated PRs. Dependabot handles the actual upgrades.
+  audit:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Security audit (non-blocking)
+        run: pnpm audit --audit-level=high

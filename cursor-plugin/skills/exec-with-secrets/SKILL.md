@@ -1,12 +1,9 @@
 ---
-inclusion: manual
+name: exec-with-secrets
+description: Run shell commands with secrets injected from q-ring with stdout/stderr redaction and policy checks. Use when the user wants to run tests, migrations, or CLIs that need API keys without pasting secrets into the shell or .env.
 ---
 
-# q-ring · Exec with Secrets (skill)
-
-> Activate by typing `#qring-exec-with-secrets` in chat.
-
-Run shell commands with secrets injected from q-ring with stdout/stderr redaction and policy checks.
+# Exec with secrets (MCP)
 
 ## When to use
 
