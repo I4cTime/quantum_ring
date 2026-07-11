@@ -5,20 +5,19 @@ on:
     # "published" (not "created") so draft releases never trigger a publish;
     # matches the trigger update-homebrew.yml already uses.
     types: [published]
-  # Allow re-publishing a tag manually if the release-triggered run fails.
-  # Pick the tag (or any branch) when dispatching from the Actions tab.
+  # The tag-driven release path: release.yml dispatches this workflow on the
+  # tag ref. Also used to re-publish manually if a run fails — pick the tag
+  # (or any branch) when dispatching from the Actions tab.
+  #
+  # Deliberately NOT workflow_call: npm trusted publishing validates the OIDC
+  # token's top-level workflow file, and the trusted publisher on npmjs.com is
+  # registered for publish.yml. A called workflow presents release.yml as the
+  # top-level file and npm rejects the token with a misleading E404 (this
+  # failed the first v0.13.0 run).
   workflow_dispatch:
     inputs:
       ref:
-        description: "Git ref to publish (defaults to the current branch)"
-        required: false
-        type: string
-  # Called from release.yml on tag push (GITHUB_TOKEN-created releases don't
-  # emit events, so the release:published trigger can't fire for that path).
-  workflow_call:
-    inputs:
-      ref:
-        description: "Git ref to publish (defaults to the calling ref)"
+        description: "Git ref to publish (defaults to the dispatched ref)"
         required: false
         type: string
 
