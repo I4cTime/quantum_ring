@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.13.0] — 2026-07-11
+
 ### Dependencies
 - **Fixed GHSA-h67p-54hq-rp68** (js-yaml quadratic-complexity DoS, dev-scope via eslint) with a `js-yaml >=4.2.0` override — resolves to 4.3.0.
 - **Majors:** `commander` 14→15 (CLI verified end-to-end), `eslint` 9→10 (three findings from newly-default rules fixed in code), `@types/node` 25→26; GitHub Actions `checkout` v7, `setup-node` v6, `pnpm/action-setup` v6, `codeql-action` v4.
