@@ -74,6 +74,12 @@ qring generate --format api-key --prefix "sk-" --save MY_KEY
 
 # 5️⃣ Run a full health scan
 qring health
+
+# Something not working? Diagnose the install (keyring, audit, MCP wiring)
+qring doctor
+
+# Tab completion for your shell
+qring completion zsh > ~/.zsh/completions/_qring   # also: bash, fish
 ```
 
 ## Quantum Features
@@ -959,6 +965,13 @@ Optional per-project configuration:
 - **`provider`** associates a liveness validation provider with a secret (e.g., `"openai"`, `"stripe"`, `"github"`) — use `qring validate` to test
 - **`validationUrl`** configures the generic HTTP provider's endpoint for custom validation
 - **`policy`** defines governance rules for MCP tool gating, key access restrictions, exec allowlists, and secret lifecycle requirements
+
+## 📚 Docs
+
+- [Quickstart: Claude Code](docs/quickstart-claude-code.md) · [Cursor](docs/quickstart-cursor.md) · [Kiro](docs/quickstart-kiro.md)
+- [Troubleshooting](docs/troubleshooting.md) — keyring backends, MCP connection, approval gate, policy pinning
+- [CLI ↔ MCP parity](docs/cli-mcp-parity.md) — every command mapped to its MCP tool
+- [Releasing](docs/releasing.md) — tag-driven release flow
 
 ## Contributing
 

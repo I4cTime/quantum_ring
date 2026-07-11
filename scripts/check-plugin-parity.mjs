@@ -71,7 +71,7 @@ const TOOL_COUNT_PATTERNS = [
   /MCP_tools-(\d+)-/g, // README badge
   /(\d+)\s+(?:q-ring\s+)?(?:built-in\s+)?MCP tools/g,
   /MCP server with (\d+) tools/g,
-  /all (\d+) tools available/g,
+  /all (\d+) tools\b/g,
 ];
 const DOC_FILES = [
   "README.md",
@@ -79,6 +79,9 @@ const DOC_FILES = [
   "kiro-plugin/README.md",
   "kiro-plugin/POWER.md",
   "claude-code-plugin/README.md",
+  "docs/quickstart-claude-code.md",
+  "docs/quickstart-cursor.md",
+  "docs/quickstart-kiro.md",
 ];
 for (const file of DOC_FILES) {
   const text = readFileSync(join(root, file), "utf8");
