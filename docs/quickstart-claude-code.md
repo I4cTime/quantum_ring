@@ -14,7 +14,7 @@ qring doctor                    # verify keyring backend + qring-mcp on PATH
 Inside Claude Code:
 
 ```
-/plugin marketplace add I4cTime/quantum_ring
+/plugin marketplace add I4cTime/q-ring
 /plugin install qring@q-ring
 ```
 

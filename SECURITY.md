@@ -17,7 +17,7 @@ Instead, please report them privately using one of the following methods:
 
 Use GitHub's built-in private reporting:
 
-**[Report a vulnerability](https://github.com/I4cTime/quantum_ring/security/advisories/new)**
+**[Report a vulnerability](https://github.com/I4cTime/q-ring/security/advisories/new)**
 
 ### 2. Email
 

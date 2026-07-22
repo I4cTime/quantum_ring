@@ -95,7 +95,7 @@ Push the `kiro-plugin/` tree to a **public** repository so others can use **Add 
 
 ### Alternative: Flatten into `~/.kiro` (no Power UI)
 
-From the `quantum_ring` repo root:
+From the `q-ring` repo root:
 
 ```bash
 pnpm install
@@ -150,4 +150,4 @@ Or activate the manual steering file `#qring-cmd-setup-project` and let the agen
 
 ## License
 
-AGPL-3.0-only — same as the [@i4ctime/q-ring](https://www.npmjs.com/package/@i4ctime/q-ring) npm package and [quantum_ring](https://github.com/I4cTime/quantum_ring) repository.
+AGPL-3.0-only — same as the [@i4ctime/q-ring](https://www.npmjs.com/package/@i4ctime/q-ring) npm package and [q-ring](https://github.com/I4cTime/q-ring) repository.

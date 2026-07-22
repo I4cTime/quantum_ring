@@ -3,7 +3,7 @@
   "name": "io.github.I4cTime/q-ring",
   "description": "Quantum-inspired keyring for AI coding agents with superposition, entanglement, and tunneling.",
   "repository": {
-    "url": "https://github.com/I4cTime/quantum_ring",
+    "url": "https://github.com/I4cTime/q-ring",
     "source": "github"
   },
   "version": "0.13.0",

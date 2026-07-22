@@ -6,7 +6,7 @@
     "name": "I4cTime"
   },
   "homepage": "https://qring.i4c.studio",
-  "repository": "https://github.com/I4cTime/quantum_ring",
+  "repository": "https://github.com/I4cTime/q-ring",
   "license": "AGPL-3.0",
   "keywords": [
     "secrets",

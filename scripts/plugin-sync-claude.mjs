@@ -18,7 +18,7 @@
  *
  * NOTE: this script is the manual, project-scoped install path. If you just
  * want the plugin, install it through Claude Code's plugin system instead:
- *   /plugin marketplace add I4cTime/quantum_ring
+ *   /plugin marketplace add I4cTime/q-ring
  *   /plugin install qring@q-ring
  *
  * Project-scoped layout (source dirs live at the plugin root, matching the

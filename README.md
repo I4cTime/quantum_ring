@@ -8,11 +8,11 @@
 
 [![NPM Version](https://img.shields.io/npm/v/@i4ctime/q-ring?style=flat-square&color=0ea5e9)](https://www.npmjs.com/package/@i4ctime/q-ring)
 [![Docs](https://img.shields.io/badge/docs-website-0ea5e9?style=flat-square)](https://qring.i4c.studio/docs)
-[![MCP Tools](https://img.shields.io/badge/MCP_tools-44-0ea5e9?style=flat-square)](https://glama.ai/mcp/servers/I4cTime/quantum_ring)
-[![License](https://img.shields.io/npm/l/@i4ctime/q-ring?style=flat-square&color=0ea5e9)](https://github.com/I4cTime/quantum_ring/blob/main/LICENSE)
+[![MCP Tools](https://img.shields.io/badge/MCP_tools-44-0ea5e9?style=flat-square)](https://glama.ai/mcp/servers/I4cTime/q-ring)
+[![License](https://img.shields.io/npm/l/@i4ctime/q-ring?style=flat-square&color=0ea5e9)](https://github.com/I4cTime/q-ring/blob/main/LICENSE)
 
-<a href="https://glama.ai/mcp/servers/I4cTime/quantum_ring">
-  <img src="https://glama.ai/mcp/servers/I4cTime/quantum_ring/badges/card.svg" alt="quantum_ring MCP server" width="400" />
+<a href="https://glama.ai/mcp/servers/I4cTime/q-ring">
+  <img src="https://glama.ai/mcp/servers/I4cTime/q-ring/badges/card.svg" alt="q-ring MCP server" width="400" />
 </a>
 
 Stop pasting API keys into plain-text `.env` files or wrestling with clunky secret managers. **q-ring** securely anchors your credentials to your OS's native vault (macOS Keychain, Linux Secret Service, Windows Credential Vault) and supercharges them with mechanics from quantum physics.
@@ -49,8 +49,8 @@ brew install i4ctime/tap/qring
 The repo ships a `Dockerfile` that builds the MCP server and exposes it through [`mcp-proxy`](https://github.com/punkpeye/mcp-proxy) — useful for hosted MCP deployments (e.g. Glama) or keeping the server off the host entirely:
 
 ```bash
-git clone https://github.com/I4cTime/quantum_ring.git
-cd quantum_ring
+git clone https://github.com/I4cTime/q-ring.git
+cd q-ring
 docker build -t qring-mcp .
 docker run --rm -p 8080:8080 qring-mcp
 ```
@@ -802,7 +802,7 @@ Add to `.cursor/mcp.json` or `.kiro/mcp.json`:
   "mcpServers": {
     "q-ring": {
       "command": "node",
-      "args": ["/path/to/quantum_ring/dist/mcp.js"]
+      "args": ["/path/to/q-ring/dist/mcp.js"]
     }
   }
 }
@@ -831,7 +831,7 @@ Add to `~/.claude/claude_desktop_config.json`:
   "mcpServers": {
     "q-ring": {
       "command": "node",
-      "args": ["/path/to/quantum_ring/dist/mcp.js"]
+      "args": ["/path/to/q-ring/dist/mcp.js"]
     }
   }
 }

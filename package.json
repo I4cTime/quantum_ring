@@ -50,10 +50,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/I4cTime/quantum_ring.git"
+    "url": "git+https://github.com/I4cTime/q-ring.git"
   },
   "bugs": {
-    "url": "https://github.com/I4cTime/quantum_ring/issues"
+    "url": "https://github.com/I4cTime/q-ring/issues"
   },
   "homepage": "https://qring.i4c.studio",
   "dependencies": {

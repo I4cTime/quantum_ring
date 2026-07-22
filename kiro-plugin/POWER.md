@@ -46,12 +46,12 @@ Verify:
 qring-mcp --help
 ```
 
-**CRITICAL:** If `qring-mcp` is not found, do **not** pretend q-ring tools work — tell the user to install `@i4ctime/q-ring` globally (or run from a local `quantum_ring` clone with `node dist/mcp.js`) and reload MCP in Kiro.
+**CRITICAL:** If `qring-mcp` is not found, do **not** pretend q-ring tools work — tell the user to install `@i4ctime/q-ring` globally (or run from a local `q-ring` clone with `node dist/mcp.js`) and reload MCP in Kiro.
 
 ### Step 2: Add this folder as a Kiro Power (recommended)
 
 1. Open Kiro → **Powers** panel → **Add power from Local Path**.
-2. Select the `kiro-plugin` directory from the [quantum_ring](https://github.com/I4cTime/quantum_ring) repository (the folder that contains `POWER.md`, `mcp.json`, and `steering/`).
+2. Select the `kiro-plugin` directory from the [q-ring](https://github.com/I4cTime/q-ring) repository (the folder that contains `POWER.md`, `mcp.json`, and `steering/`).
 3. Confirm the power activates when the user mentions secrets, `.env`, API keys, or q-ring (see `keywords` in frontmatter).
 
 To share publicly: push the `kiro-plugin/` tree to a public GitHub repo and others can use **Add power from GitHub** per [Create powers — Sharing your power](https://kiro.dev/docs/powers/create/). Curated community powers are listed at [github.com/kirodotdev/powers](https://github.com/kirodotdev/powers).
@@ -68,7 +68,7 @@ If copying fails or the schema changes, recreate the same prompts from the hook 
 
 ### Alternative: Flatten into `~/.kiro` (no Power UI)
 
-From the `quantum_ring` repo root:
+From the `q-ring` repo root:
 
 ```bash
 pnpm run plugin:sync:kiro

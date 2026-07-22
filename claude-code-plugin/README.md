@@ -86,7 +86,7 @@ Skills are progressively disclosed — Claude Code reads only the metadata until
 Install through Claude Code's plugin system — no file copying, updates ship with the marketplace:
 
 ```
-/plugin marketplace add I4cTime/quantum_ring
+/plugin marketplace add I4cTime/q-ring
 /plugin install qring@q-ring
 ```
 
@@ -94,7 +94,7 @@ This registers the MCP server, slash commands, subagents, skills, and hooks in o
 
 ### One-shot project sync
 
-From the `quantum_ring` repo root:
+From the `q-ring` repo root:
 
 ```bash
 pnpm install
@@ -172,4 +172,4 @@ Or run `/qring-setup-project` and let the agent walk you through it.
 
 ## License
 
-AGPL-3.0-only — same as the [@i4ctime/q-ring](https://www.npmjs.com/package/@i4ctime/q-ring) npm package and [quantum_ring](https://github.com/I4cTime/quantum_ring) repository.
+AGPL-3.0-only — same as the [@i4ctime/q-ring](https://www.npmjs.com/package/@i4ctime/q-ring) npm package and [q-ring](https://github.com/I4cTime/q-ring) repository.
